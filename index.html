@@ -18,16 +18,16 @@ body::before{content:'';position:fixed;inset:0;
   background:radial-gradient(ellipse 600px 400px at 20% 20%,rgba(77,150,255,.07) 0%,transparent 70%),
              radial-gradient(ellipse 500px 300px at 80% 70%,rgba(255,107,107,.07) 0%,transparent 70%);
   pointer-events:none;z-index:0;}
-
+ 
 .wrap{position:relative;z-index:1;max-width:680px;margin:0 auto;padding:20px 16px 60px;}
-
+ 
 /* header */
 header{text-align:center;padding:24px 0 16px;}
 .logo{font-family:'Baloo 2',cursive;font-size:2.2rem;font-weight:800;
   background:linear-gradient(135deg,#4d96ff,#ffd93d);
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 .logo-sub{display:block;font-size:.9rem;color:var(--muted);-webkit-text-fill-color:var(--muted);margin-top:-2px;}
-
+ 
 /* scores */
 .scores{display:flex;justify-content:center;gap:10px;margin:12px 0 20px;flex-wrap:wrap;}
 .pill{background:var(--card);border-radius:50px;padding:6px 16px;
@@ -36,17 +36,17 @@ header{text-align:center;padding:24px 0 16px;}
 .pill.w{border-color:var(--wrong);color:var(--wrong);}
 .pill.s{border-color:var(--partial);color:var(--partial);}
 .pill big{font-size:1.2rem;}
-
+ 
 /* mode tabs */
 .tabs{display:flex;background:var(--card);border-radius:50px;padding:4px;gap:3px;margin-bottom:16px;}
 .tab{flex:1;padding:8px;border:none;background:transparent;border-radius:50px;
   color:var(--muted);font-family:'Nunito',sans-serif;font-weight:700;font-size:.82rem;cursor:pointer;transition:all .2s;}
 .tab.on{background:linear-gradient(135deg,#4d96ff,#a78bfa);color:#fff;box-shadow:0 4px 14px rgba(77,150,255,.35);}
-
+ 
 /* progress */
 .prog-wrap{background:rgba(255,255,255,.06);border-radius:50px;height:5px;margin-bottom:14px;overflow:hidden;}
 .prog-bar{height:100%;background:linear-gradient(90deg,#4d96ff,#a78bfa);border-radius:50px;transition:width .4s;}
-
+ 
 /* word card */
 .wcard{background:var(--card);border-radius:var(--radius);padding:26px 22px 20px;
   text-align:center;border:2px solid rgba(255,255,255,.06);
@@ -55,7 +55,7 @@ header{text-align:center;padding:24px 0 16px;}
 .wcard.no {border-color:var(--wrong);  box-shadow:0 0 40px rgba(255,107,107,.25);animation:shake .35s ease;}
 @keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.025)}100%{transform:scale(1)}}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
-
+ 
 .ctag{display:inline-block;background:rgba(77,150,255,.15);color:var(--accent4);
   border-radius:50px;padding:3px 12px;font-size:.72rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px;}
 .wword{font-family:'Baloo 2',cursive;font-size:3rem;font-weight:700;letter-spacing:-1px;line-height:1.1;margin-bottom:5px;}
@@ -63,7 +63,7 @@ header{text-align:center;padding:24px 0 16px;}
 .wmean{color:var(--muted);font-size:.88rem;padding:5px 13px;background:rgba(255,255,255,.04);border-radius:9px;display:inline-block;}
 .wex{margin-top:10px;font-size:.85rem;color:var(--muted);font-style:italic;line-height:1.6;}
 .wex .hl{color:var(--partial);font-style:normal;font-weight:700;}
-
+ 
 /* result */
 .result-row{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;min-height:48px;margin-top:12px;}
 .badge{padding:7px 18px;border-radius:50px;font-weight:800;font-size:1rem;
@@ -75,11 +75,11 @@ header{text-align:center;padding:24px 0 16px;}
 @keyframes pop{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
 .heard{font-size:.85rem;color:var(--muted);background:rgba(255,255,255,.06);padding:5px 12px;border-radius:50px;display:none;}
 .heard b{color:var(--text);}
-
+ 
 /* ── MIC PANEL ── */
 .mic-panel{background:var(--card);border-radius:var(--radius);
   border:2px solid rgba(255,255,255,.06);padding:20px 18px;margin-bottom:14px;text-align:center;}
-
+ 
 /* big mic button */
 .mic-btn{
   width:88px;height:88px;border-radius:50%;border:none;cursor:pointer;
@@ -105,22 +105,22 @@ header{text-align:center;padding:24px 0 16px;}
 }
 @keyframes mbPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
 @keyframes rip{0%{transform:scale(.8);opacity:1}100%{transform:scale(1.3);opacity:0}}
-
+ 
 .mic-hint{font-weight:700;font-size:.9rem;color:var(--muted);margin-bottom:6px;min-height:22px;transition:color .2s;}
 .mic-hint.live{color:var(--wrong);font-size:.95rem;}
-
+ 
 /* waveform */
 .wave{height:44px;display:flex;align-items:center;justify-content:center;gap:3px;margin:8px 0 4px;}
 .wb{width:4px;border-radius:4px;background:rgba(77,150,255,.2);min-height:4px;transition:height .08s;}
 .wave.on .wb{background:var(--accent4);}
-
+ 
 /* listen btn */
 .btn-listen{background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.12);
   color:var(--text);padding:8px 18px;border-radius:50px;
   font-family:'Nunito',sans-serif;font-weight:700;font-size:.85rem;
   cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px;margin-bottom:14px;}
 .btn-listen:hover{background:rgba(255,255,255,.12);transform:translateY(-2px);}
-
+ 
 /* nav */
 .nav{display:flex;gap:10px;justify-content:center;margin-top:2px;}
 .btn{padding:10px 22px;border-radius:50px;font-family:'Nunito',sans-serif;font-weight:800;
@@ -129,7 +129,7 @@ header{text-align:center;padding:24px 0 16px;}
 .btn-p{background:linear-gradient(135deg,#4d96ff,#a78bfa);color:#fff;box-shadow:0 5px 16px rgba(77,150,255,.35);}
 .btn-g{background:var(--card);color:var(--muted);border:2px solid rgba(255,255,255,.1);}
 .btn-g:hover{color:var(--text);}
-
+ 
 /* word grid */
 .wordlist{margin-top:24px;}
 .sec-t{font-family:'Baloo 2',cursive;font-size:1.1rem;font-weight:700;color:var(--muted);margin-bottom:9px;}
@@ -142,7 +142,7 @@ header{text-align:center;padding:24px 0 16px;}
 .chip.ac{border-color:var(--accent4);background:rgba(77,150,255,.1);}
 .chip-w{font-weight:800;font-size:.9rem;display:block;}
 .chip-i{font-size:.9rem;display:block;margin-top:1px;}
-
+ 
 /* custom */
 .custom{background:var(--card);border-radius:var(--radius);padding:16px;margin-top:12px;
   border:2px solid rgba(255,255,255,.06);display:none;}
@@ -154,19 +154,19 @@ header{text-align:center;padding:24px 0 16px;}
   font-family:'Nunito',sans-serif;font-size:.92rem;font-weight:600;outline:none;transition:border-color .2s;}
 .cust-in:focus{border-color:var(--accent4);}
 .cust-in::placeholder{color:var(--muted);}
-
+ 
 /* streak */
 .streak{display:none;text-align:center;padding:10px;
   background:rgba(255,217,61,.1);border:2px solid rgba(255,217,61,.28);
   border-radius:13px;margin:10px 0;font-weight:800;color:var(--partial);font-size:.9rem;
   animation:pop .4s cubic-bezier(.34,1.56,.64,1);}
 .streak.on{display:block;}
-
+ 
 /* tip */
 .tip{background:rgba(77,150,255,.07);border:1.5px solid rgba(77,150,255,.17);
   border-radius:13px;padding:12px 15px;margin-top:14px;font-size:.82rem;color:var(--muted);line-height:1.6;}
 .tip b{color:var(--accent4);}
-
+ 
 /* confetti */
 #cv{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999;}
 @media(max-width:480px){.wword{font-size:2.3rem;}.logo{font-size:1.9rem;}.mic-btn{width:76px;height:76px;font-size:1.9rem;}}
@@ -175,25 +175,25 @@ header{text-align:center;padding:24px 0 16px;}
 <body>
 <canvas id="cv"></canvas>
 <div class="wrap">
-
+ 
 <header>
   <div class="logo">🎤 PronouncePal<span class="logo-sub">말하면 바로 채점!</span></div>
 </header>
-
+ 
 <div class="scores">
   <div class="pill c">✅ 맞음 <big id="sc-c">0</big></div>
   <div class="pill w">❌ 틀림 <big id="sc-w">0</big></div>
   <div class="pill s">🔥 연속 <big id="sc-s">0</big></div>
 </div>
-
+ 
 <div class="tabs">
   <button class="tab on" onclick="setMode('school')">🏫 학교 필수</button>
   <button class="tab" onclick="setMode('phrases')">💬 생활 표현</button>
   <button class="tab" onclick="setMode('custom')">✏️ 직접 입력</button>
 </div>
-
+ 
 <div class="prog-wrap"><div class="prog-bar" id="prog" style="width:0"></div></div>
-
+ 
 <!-- word card -->
 <div class="wcard" id="wcard">
   <div class="ctag" id="ctag">Category</div>
@@ -206,9 +206,9 @@ header{text-align:center;padding:24px 0 16px;}
     <span class="heard" id="heard">들린 발음: <b id="heard-w"></b></span>
   </div>
 </div>
-
+ 
 <div class="streak" id="streak"></div>
-
+ 
 <!-- mic panel -->
 <div class="mic-panel">
   <button class="btn-listen" onclick="speakWord()">🔊 원어민 발음 듣기</button><br>
@@ -216,17 +216,17 @@ header{text-align:center;padding:24px 0 16px;}
   <button class="mic-btn" id="mic-btn" onclick="toggleListen()">🎤</button>
   <div class="mic-hint" id="mic-hint">버튼을 누르고 바로 말하세요</div>
 </div>
-
+ 
 <div class="nav">
   <button class="btn btn-g" onclick="nextWord()">⏭ 건너뛰기</button>
   <button class="btn btn-p" onclick="nextWord()">다음 단어 →</button>
 </div>
-
+ 
 <div class="wordlist">
   <div class="sec-t">📚 단어 목록</div>
   <div class="grid" id="grid"></div>
 </div>
-
+ 
 <div class="custom" id="custom-box">
   <div class="cust-l">✏️ 단어 또는 문장 추가</div>
   <div class="cust-row">
@@ -234,12 +234,12 @@ header{text-align:center;padding:24px 0 16px;}
     <button class="btn btn-p" onclick="addCustom()">추가</button>
   </div>
 </div>
-
+ 
 <div class="tip">
   💡 <b>사용법:</b> 🔊 원어민 발음 먼저 듣고 → 🎤 버튼 누르고 바로 말하면 <b>즉시 채점!</b><br>
   <b>Chrome / Samsung Internet</b> 브라우저에서 작동합니다. 마이크 권한을 허용해 주세요.
 </div>
-
+ 
 </div><!-- /wrap -->
 <script>
 // ── DATA ──────────────────────────────────────────
@@ -269,17 +269,17 @@ const WORDS = {
     {word:'I am looking forward to it',ph:'/aɪm ˈlʊk.ɪŋ ˈfɔːrd tuː ɪt/',  mean:'기대하고 있어요',  cat:'표현',  ex:'{I am looking forward to it}!'},
   ],
 };
-
+ 
 let customList=[], mode='school', words=[], idx=0;
 let cN=0, wN=0, streak=0, results={};
 let recog=null, listening=false, animId=null;
 let audioCtx=null, analyser=null;
-
+ 
 // ── WAVEFORM ──────────────────────────────────────
 const waveEl=document.getElementById('wave');
 for(let i=0;i<24;i++){const b=document.createElement('div');b.className='wb';b.style.height='4px';waveEl.appendChild(b);}
 const wBars=waveEl.querySelectorAll('.wb');
-
+ 
 function animWave(on){
   waveEl.className='wave'+(on?' on':'');
   if(animId){cancelAnimationFrame(animId);animId=null;}
@@ -298,66 +298,113 @@ function animWave(on){
   }
   draw();
 }
-
+ 
 // ── SPEECH RECOGNITION ────────────────────────────
+let autoStopTimer=null;
+let pendingAlts=null;
+ 
 function toggleListen(){
-  if(listening) stopListen();
+  if(listening) forceStop();
   else startListen();
 }
-
+ 
+// 갤럭시 강제 종료: 말한 뒤 버튼 다시 누르면 저장된 결과로 채점
+function forceStop(){
+  if(autoStopTimer){clearTimeout(autoStopTimer);autoStopTimer=null;}
+  try{recog&&recog.stop();}catch(e){}
+  if(pendingAlts){
+    const alts=pendingAlts; pendingAlts=null;
+    stopListen(); grade(alts);
+  } else {
+    stopListen();
+    document.getElementById('mic-hint').textContent='소리가 감지되지 않았어요. 다시 눌러 말해보세요!';
+  }
+}
+ 
 async function startListen(){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){
     document.getElementById('mic-hint').textContent='⚠️ Chrome / Samsung 브라우저에서 사용 가능해요';
     return;
   }
-
-  // 마이크 시각화용 audioContext (선택)
+ 
+  pendingAlts=null;
+ 
+  // 마이크 시각화용 audioContext
   try{
     const stream=await navigator.mediaDevices.getUserMedia({audio:true});
     audioCtx=new(window.AudioContext||window.webkitAudioContext)();
     analyser=audioCtx.createAnalyser(); analyser.fftSize=256;
     audioCtx.createMediaStreamSource(stream).connect(analyser);
   }catch(e){ analyser=null; }
-
+ 
   recog=new SR();
   recog.lang='en-US';
   recog.continuous=false;
-  recog.interimResults=false;
+  recog.interimResults=true;  // 갤럭시에서 중간 결과도 받아야 끊김 감지 가능
   recog.maxAlternatives=5;
-
+ 
   recog.onstart=()=>{
     listening=true;
     document.getElementById('mic-btn').classList.add('listening');
     document.getElementById('mic-btn').textContent='⏹';
     const h=document.getElementById('mic-hint');
-    h.textContent='🔴 듣고 있어요… 지금 말하세요!';
+    h.textContent='🔴 말하고 → 버튼 다시 누르세요!';
     h.classList.add('live');
     animWave(true);
     clearResult();
+ 
+    // 갤럭시 안전장치: 8초 후 자동 종료
+    autoStopTimer=setTimeout(()=>forceStop(), 8000);
   };
-
-  // ★ 결과 나오면 즉시 채점 — 대기 없음
+ 
   recog.onresult=(e)=>{
-    const alts=Array.from(e.results[0]).map(r=>r.transcript.trim().toLowerCase());
-    stopListen();
-    grade(alts);
+    // 중간 결과든 최종 결과든 일단 저장
+    const last=e.results[e.results.length-1];
+    const alts=Array.from(last).map(r=>r.transcript.trim().toLowerCase());
+    pendingAlts=alts;
+ 
+    if(last.isFinal){
+      // 최종 결과가 왔으면 바로 채점
+      if(autoStopTimer){clearTimeout(autoStopTimer);autoStopTimer=null;}
+      stopListen();
+      grade(alts);
+    } else {
+      // 중간 결과: 힌트 업데이트
+      const h=document.getElementById('mic-hint');
+      h.textContent=`🎤 "${alts[0]}" — 끝나면 버튼 누르세요`;
+    }
   };
-
+ 
   recog.onerror=(e)=>{
+    if(autoStopTimer){clearTimeout(autoStopTimer);autoStopTimer=null;}
+    // no-speech 에러여도 pendingAlts 있으면 채점
+    if(e.error==='no-speech'&&pendingAlts){
+      const alts=pendingAlts; pendingAlts=null;
+      stopListen(); grade(alts); return;
+    }
     stopListen();
     const msg={
       'no-speech':'소리가 안 들렸어요. 더 크게 말해보세요! 🔈',
       'not-allowed':'마이크 권한이 필요해요. 브라우저에서 허용해 주세요.',
       'network':'인터넷 연결을 확인해 주세요.',
     };
-    document.getElementById('mic-hint').textContent = msg[e.error]||'다시 시도해 주세요.';
+    document.getElementById('mic-hint').textContent=msg[e.error]||'다시 시도해 주세요.';
   };
-
-  recog.onend=()=>{ if(listening) stopListen(); };
+ 
+  recog.onend=()=>{
+    if(autoStopTimer){clearTimeout(autoStopTimer);autoStopTimer=null;}
+    if(pendingAlts){
+      const alts=pendingAlts; pendingAlts=null;
+      stopListen(); grade(alts);
+    } else if(listening){
+      stopListen();
+    }
+  };
+ 
   recog.start();
 }
-
+ 
 function stopListen(){
   listening=false;
   try{recog&&recog.stop();}catch(e){}
@@ -369,14 +416,14 @@ function stopListen(){
   h.classList.remove('live');
   animWave(false);
 }
-
+ 
 // ── GRADING ───────────────────────────────────────
 function grade(alts){
   const target=words[idx]; if(!target) return;
   const tn=target.word.toLowerCase().replace(/[^a-z\s]/g,'').trim();
   const heard=alts[0]||'';
   const hn=heard.replace(/[^a-z\s]/g,'').trim();
-
+ 
   // 1) 완전 일치 (모든 후보 중)
   let g='wrong';
   for(const a of alts){
@@ -388,16 +435,16 @@ function grade(alts){
     const m=tw.filter(w=>hw.some(h=>h===w||lev(h,w)<=1));
     if(m.length/tw.length>=0.65) g='partial';
   }
-
+ 
   // 결과 표시
   const card=document.getElementById('wcard');
   const badge=document.getElementById('badge');
   const heardEl=document.getElementById('heard');
   card.classList.remove('ok','no');
-
+ 
   document.getElementById('heard-w').textContent=heard||'(인식 안 됨)';
   heardEl.style.display='inline-block';
-
+ 
   if(g==='correct'){
     badge.className='badge ok show'; badge.innerHTML='✅ 완벽해요!';
     card.classList.add('ok');
@@ -418,14 +465,14 @@ function grade(alts){
   }
   updateUI();
 }
-
+ 
 function clearResult(){
   document.getElementById('badge').className='badge';
   document.getElementById('heard').style.display='none';
   document.getElementById('streak').classList.remove('on');
   document.getElementById('wcard').classList.remove('ok','no');
 }
-
+ 
 // ── TTS ───────────────────────────────────────────
 function speakWord(){
   const s=window.speechSynthesis; if(!s) return; s.cancel();
@@ -435,7 +482,7 @@ function speakWord(){
   if(v) u.voice=v;
   s.speak(u);
 }
-
+ 
 // ── WORD / MODE ───────────────────────────────────
 function setMode(m){
   mode=m;
@@ -447,7 +494,7 @@ function setMode(m){
   if(words.length) loadWord(0);
   else document.getElementById('wword').textContent='단어를 추가하세요';
 }
-
+ 
 function loadWord(i){
   idx=i;
   const w=words[i];
@@ -464,9 +511,9 @@ function loadWord(i){
   document.getElementById('mic-hint').classList.remove('live');
   updateProg(); highlightChip(i);
 }
-
+ 
 function nextWord(){ if(!words.length) return; stopListen(); loadWord((idx+1)%words.length); }
-
+ 
 function addCustom(){
   const v=document.getElementById('cust-in').value.trim(); if(!v) return;
   customList.push({word:v,ph:'',mean:'직접 입력',cat:'사용자',ex:''});
@@ -474,7 +521,7 @@ function addCustom(){
   document.getElementById('cust-in').value='';
   renderGrid(); loadWord(words.length-1);
 }
-
+ 
 // ── UI HELPERS ────────────────────────────────────
 function updateUI(){
   document.getElementById('sc-c').textContent=cN;
@@ -513,7 +560,7 @@ function lev(a,b){
   for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
   return dp[m][n];
 }
-
+ 
 // ── CONFETTI ──────────────────────────────────────
 function confetti(){
   const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
@@ -523,7 +570,7 @@ function confetti(){
   let f=0;
   (function draw(){ctx.clearRect(0,0,cv.width,cv.height);ps.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.rot+=p.vr;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot);ctx.fillStyle=p.color;ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);ctx.restore();});if(++f<120)requestAnimationFrame(draw);else ctx.clearRect(0,0,cv.width,cv.height);})();
 }
-
+ 
 // ── BOOT ──────────────────────────────────────────
 if(window.speechSynthesis){speechSynthesis.onvoiceschanged=()=>speechSynthesis.getVoices();speechSynthesis.getVoices();}
 document.addEventListener('DOMContentLoaded',()=>{
