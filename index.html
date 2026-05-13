@@ -558,7 +558,7 @@ function loadStep() {
     label.innerHTML = '🎭 전체 대화 발음하기';
     content.innerHTML = `<div class="full-lines">${lines.map((l,i) =>
       `<div class="full-line"><span class="sp">${speakers[i]||'?'}:</span>${l}</div>`).join('')}</div>`;
-    document.getElementById('recArea').style.display = 'none';
+    document.getElementById('recArea').style.display = 'block';
     document.getElementById('btnDone').style.display = 'none';
     document.getElementById('btnFullListen').style.display = 'block';
     document.getElementById('btnFullDone').style.display = 'block';
@@ -566,7 +566,7 @@ function loadStep() {
     if (doneDialogues.has(dialogueIdx)) {
       fd.textContent = '✔ 완료된 대화예요!'; fd.classList.add('done-state'); fd.disabled = true;
     } else {
-      fd.textContent = '🎉 전체 발음 완료!'; fd.classList.remove('done-state'); fd.disabled = false;
+      fd.textContent = '🎉 전체 발음 완료!'; fd.classList.remove('done-state'); fd.disabled = true;
     }
   } else {
     card.classList.remove('full-mode');
@@ -580,7 +580,7 @@ function loadStep() {
     if (doneDialogues.has(dialogueIdx)) {
       bd.textContent = '✔ 완료된 대화예요!'; bd.classList.add('done-state'); bd.disabled = true;
     } else {
-      bd.textContent = '✅ 발음 완료!'; bd.classList.remove('done-state'); bd.disabled = false;
+      bd.textContent = '✅ 발음 완료!'; bd.classList.remove('done-state'); bd.disabled = true;
     }
   }
 }
@@ -695,6 +695,11 @@ function handleRecStop() {
   document.getElementById('btnRec').classList.remove('recording');
   document.getElementById('btnPlayRec').disabled = false;
   document.getElementById('recHint').textContent = '▶ 듣기로 확인하고 발음 완료를 눌러주세요!';
+  // 녹음 완료 → 발음 완료 버튼 활성화
+  const bd = document.getElementById('btnDone');
+  const fd = document.getElementById('btnFullDone');
+  if (bd.style.display !== 'none') bd.disabled = false;
+  if (fd.style.display !== 'none') fd.disabled = false;
 }
 
 function playRec() {
@@ -727,6 +732,15 @@ function markDone() {
 }
 
 async function markFullDone() {
+  // 전체 대화 녹음본 있으면 업로드 대기열에 추가
+  if (recordedBlob) {
+    uploadQueue.push({
+      blob: recordedBlob,
+      dialIdx: dialogueIdx,
+      stepIdx: currentUnit.dialogues[dialogueIdx].lines.length, // 전체 = 마지막 인덱스+1
+      sentence: '(전체 대화)'
+    });
+  }
   doneDialogues.add(dialogueIdx);
   document.getElementById('btnFullDone').textContent = '✔ 완료된 대화예요!';
   document.getElementById('btnFullDone').classList.add('done-state');
