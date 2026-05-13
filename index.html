@@ -200,6 +200,19 @@
   .btn-home{background:white;border:2.5px solid var(--gray-200);color:var(--gray-600);width:100%;font-size:.9rem;padding:13px;border-radius:14px;margin-top:14px;max-width:320px;}
   .btn-home:hover{border-color:var(--orange);color:var(--orange);}
 
+
+  /* RESUME MODAL */
+  .resume-overlay{position:fixed;inset:0;background:rgba(30,20,10,.6);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .25s ease;}
+  .resume-box{background:white;border-radius:24px;padding:30px 26px 24px;max-width:380px;width:100%;box-shadow:0 24px 64px rgba(255,107,26,.25);text-align:center;animation:popIn .3s cubic-bezier(.34,1.56,.64,1);}
+  .resume-emoji{font-size:2.8rem;margin-bottom:10px;}
+  .resume-title{font-family:'Nunito',sans-serif;font-size:1.2rem;font-weight:800;color:var(--gray-800);margin-bottom:6px;}
+  .resume-sub{font-size:.88rem;font-weight:600;color:var(--gray-400);margin-bottom:20px;line-height:1.6;}
+  .resume-btns{display:flex;flex-direction:column;gap:10px;}
+  .btn-resume{background:linear-gradient(135deg,var(--orange),var(--orange-light));color:white;border:none;border-radius:14px;padding:14px;font-family:'Nunito',sans-serif;font-size:1rem;font-weight:800;cursor:pointer;box-shadow:0 4px 16px rgba(255,107,26,.35);transition:all .2s;}
+  .btn-resume:hover{transform:translateY(-2px);}
+  .btn-restart{background:white;border:2.5px solid var(--gray-200);color:var(--gray-600);border-radius:14px;padding:13px;font-family:'Nunito',sans-serif;font-size:.92rem;font-weight:700;cursor:pointer;transition:all .2s;}
+  .btn-restart:hover{border-color:var(--orange);color:var(--orange);}
+
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--gray-800);color:white;padding:10px 20px;border-radius:12px;font-weight:700;font-size:.86rem;z-index:999;transition:transform .35s cubic-bezier(.34,1.56,.64,1);}
   .toast.show{transform:translateX(-50%) translateY(0);}
 
@@ -348,6 +361,20 @@
   </div>
 
 </div>
+
+<!-- 이어하기 팝업 -->
+<div class="resume-overlay" id="resumeModal" style="display:none;">
+  <div class="resume-box">
+    <div class="resume-emoji">📌</div>
+    <div class="resume-title" id="resumeTitle">이전에 하던 숙제가 있어요!</div>
+    <div class="resume-sub" id="resumeSub"></div>
+    <div class="resume-btns">
+      <button class="btn-resume" onclick="resumeFromSaved()">✅ 이어서 하기</button>
+      <button class="btn-restart" onclick="restartFromBeginning()">🔄 처음부터 다시 하기</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -490,8 +517,61 @@ function renderUnits() {
 
 function selectUnit(id) {
   currentUnit = units.find(u => u.id === id);
-  dialogueIdx = 0; stepIdx = 0;
   doneDialogues = new Set();
+
+  // 저장된 진행 확인
+  const saved = loadProgress(studentName, id);
+  if (saved && saved.nextSet > 0 && saved.nextSet < currentUnit.dialogues.length) {
+    // 이전 완료 세트 복원
+    saved.doneSets.forEach(i => doneDialogues.add(i));
+    showResumeModal(saved);
+  } else {
+    dialogueIdx = 0; stepIdx = 0;
+    goToSetStart(0);
+  }
+}
+
+// 진행 저장
+function saveProgress(name, unitId, doneSetArr, nextSet) {
+  const key = 'pj_progress_' + name + '_' + unitId;
+  localStorage.setItem(key, JSON.stringify({ doneSets: doneSetArr, nextSet }));
+}
+
+// 진행 불러오기
+function loadProgress(name, unitId) {
+  const key = 'pj_progress_' + name + '_' + unitId;
+  const raw = localStorage.getItem(key);
+  return raw ? JSON.parse(raw) : null;
+}
+
+// 진행 삭제
+function clearProgress(name, unitId) {
+  localStorage.removeItem('pj_progress_' + name + '_' + unitId);
+}
+
+function showResumeModal(saved) {
+  const modal = document.getElementById('resumeModal');
+  document.getElementById('resumeTitle').textContent = `${currentUnit.name} 진행 중이에요!`;
+  document.getElementById('resumeSub').innerHTML =
+    `#${saved.doneSets.length}세트까지 완료했어요.<br><b>#${saved.nextSet + 1}세트</b>부터 이어서 할까요?`;
+  modal.style.display = 'flex';
+}
+
+function resumeFromSaved() {
+  document.getElementById('resumeModal').style.display = 'none';
+  const saved = loadProgress(studentName, currentUnit.id);
+  saved.doneSets.forEach(i => doneDialogues.add(i));
+  dialogueIdx = saved.nextSet;
+  stepIdx = 0;
+  renderDots(); updateDots();
+  goToSetStart(saved.nextSet);
+}
+
+function restartFromBeginning() {
+  document.getElementById('resumeModal').style.display = 'none';
+  clearProgress(studentName, currentUnit.id);
+  doneDialogues = new Set();
+  dialogueIdx = 0; stepIdx = 0;
   goToSetStart(0);
 }
 
@@ -686,12 +766,15 @@ async function markFullDone() {
 
   const total = currentUnit.dialogues.length;
   if (doneDialogues.size >= total) {
-    // 모두 완료
+    // 모두 완료 → 진행 기록 삭제
+    clearProgress(studentName, currentUnit.id);
     finishUnit();
   } else {
-    // 다음 미완료 세트로 → 새 녹음 시작 화면
-    showToast(`✅ #${dialogueIdx+1} 완료! 다음 세트로 이동해요`);
+    // 다음 미완료 세트 찾기
     const next = findNextUndone(dialogueIdx);
+    // 진행 상황 저장
+    saveProgress(studentName, currentUnit.id, [...doneDialogues], next !== -1 ? next : 0);
+    showToast(`✅ #${dialogueIdx+1} 완료! 다음 세트로 이동해요`);
     if (next !== -1) {
       setTimeout(() => goToSetStart(next), 800);
     }
