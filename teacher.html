@@ -7,7 +7,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFirestore, collection, getDocs, query, orderBy, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getStorage, ref, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDYOJZNuB72oFPskOunQa0V98eaXFuyfiw",
@@ -20,12 +21,18 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+  const storage = getStorage(app);
 
   window._db = db;
+  window._storage = storage;
   window._collection = collection;
   window._getDocs = getDocs;
   window._query = query;
   window._orderBy = orderBy;
+  window._deleteDoc = deleteDoc;
+  window._doc = doc;
+  window._ref = ref;
+  window._deleteObject = deleteObject;
   window._firebaseReady = true;
   document.dispatchEvent(new Event('firebaseReady'));
 </script>
@@ -65,9 +72,9 @@
 
   /* TABLE */
   .table-wrap{background:white;border-radius:20px;box-shadow:var(--shadow);overflow:hidden;}
-  .table-head{background:var(--bg);padding:14px 20px;display:grid;grid-template-columns:120px 80px 60px 1fr 160px 100px;gap:12px;font-size:.78rem;font-weight:800;color:var(--gray-400);letter-spacing:.06em;text-transform:uppercase;border-bottom:2px solid var(--gray-200);}
+  .table-head{background:var(--bg);padding:14px 20px;display:grid;grid-template-columns:110px 90px 60px 1fr 140px 160px;gap:12px;font-size:.78rem;font-weight:800;color:var(--gray-400);letter-spacing:.06em;text-transform:uppercase;border-bottom:2px solid var(--gray-200);}
   .table-body{}
-  .table-row{padding:14px 20px;display:grid;grid-template-columns:120px 80px 60px 1fr 160px 100px;gap:12px;align-items:center;border-bottom:1px solid var(--gray-100);transition:background .15s;}
+  .table-row{padding:14px 20px;display:grid;grid-template-columns:110px 90px 60px 1fr 140px 160px;gap:12px;align-items:center;border-bottom:1px solid var(--gray-100);transition:background .15s;}
   .table-row:hover{background:var(--bg);}
   .table-row:last-child{border-bottom:none;}
   .student-name{font-weight:800;font-size:.95rem;color:var(--gray-800);}
@@ -75,8 +82,11 @@
   .sentence-num{background:var(--green);color:white;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:800;}
   .sentence-text{font-size:.88rem;color:var(--gray-600);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .date-text{font-size:.82rem;color:var(--gray-400);font-weight:600;}
-  .btn-play-file{background:linear-gradient(135deg,var(--blue),#7B89F4);color:white;border:none;border-radius:10px;padding:7px 14px;font-family:'Nunito',sans-serif;font-size:.82rem;font-weight:800;cursor:pointer;transition:all .2s;white-space:nowrap;}
+  .btn-play-file{background:linear-gradient(135deg,var(--blue),#7B89F4);color:white;border:none;border-radius:10px;padding:7px 10px;font-family:'Nunito',sans-serif;font-size:.82rem;font-weight:800;cursor:pointer;transition:all .2s;white-space:nowrap;}
   .btn-play-file:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(67,97,238,.3);}
+  .btn-delete-file{background:white;border:2px solid #FCA5A5;color:#EF4444;border-radius:10px;padding:7px 10px;font-family:'Nunito',sans-serif;font-size:.82rem;font-weight:800;cursor:pointer;transition:all .2s;white-space:nowrap;margin-left:4px;}
+  .btn-delete-file:hover{background:#FEF2F2;border-color:#EF4444;}
+  .action-btns{display:flex;gap:4px;align-items:center;}
 
   /* AUDIO PLAYER */
   .audio-panel{position:fixed;bottom:0;left:0;right:0;background:white;border-top:2px solid var(--gray-200);padding:14px 24px;display:none;align-items:center;gap:16px;z-index:50;box-shadow:0 -4px 20px rgba(0,0,0,.08);}
@@ -237,8 +247,8 @@ function renderTable() {
 function renderList(data, wrap) {
   wrap.innerHTML = `
     <div class="table-head">
-      <div>학생</div><div>Unit</div><div>번호</div><div>문장</div>
-      <div class="th-date">날짜</div><div>녹음</div>
+      <div>학생</div><div>Script</div><div>세트</div><div>파일명</div>
+      <div class="th-date">날짜</div><div>관리</div>
     </div>
     <div class="table-body">
       ${data.map(d => rowHTML(d)).join('')}
@@ -251,15 +261,14 @@ function renderGrouped(data, wrap) {
     if (!groups[d.studentName]) groups[d.studentName] = [];
     groups[d.studentName].push(d);
   });
-
   wrap.innerHTML = Object.entries(groups).map(([name, rows]) => `
     <div class="group-header">
       <div class="group-name">👤 ${name}</div>
       <div class="group-count">${rows.length}개 제출</div>
     </div>
     <div class="table-head">
-      <div>학생</div><div>Unit</div><div>번호</div><div>문장</div>
-      <div class="th-date">날짜</div><div>녹음</div>
+      <div>학생</div><div>Script</div><div>세트</div><div>파일명</div>
+      <div class="th-date">날짜</div><div>관리</div>
     </div>
     ${rows.map(d => rowHTML(d)).join('')}
   `).join('');
@@ -268,19 +277,20 @@ function renderGrouped(data, wrap) {
 function rowHTML(d) {
   const ts = d.submittedAt ? new Date(d.submittedAt.seconds * 1000) : null;
   const dateStr = ts ? `${ts.getMonth()+1}/${ts.getDate()} ${String(ts.getHours()).padStart(2,'0')}:${String(ts.getMinutes()).padStart(2,'0')}` : '-';
-  const escaped = (d.sentence||'').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  const escapedName = (d.studentName||'').replace(/'/g, '&#39;');
+  const escapedFile = (d.fileName||'').replace(/'/g,'&#39;');
+  const label = `${d.studentName} · ${d.unitName} · #${d.setNumber||'?'}`;
   return `
-    <div class="table-row">
-      <div class="student-name">${d.studentName || '-'}</div>
-      <div><span class="unit-badge">Unit ${d.unitId}</span></div>
-      <div><div class="sentence-num">${(d.sentenceIdx||0)+1}</div></div>
-      <div class="sentence-text" title="${escaped}">${d.sentence || '-'}</div>
+    <div class="table-row" id="row-${d.id}">
+      <div class="student-name">${d.studentName||'-'}</div>
+      <div><span class="unit-badge">${d.unitName||`Unit${d.unitId}`}</span></div>
+      <div><div class="sentence-num">#${d.setNumber||'?'}</div></div>
+      <div class="sentence-text" title="${escapedFile}">${d.fileName||'-'}</div>
       <div class="date-text">${dateStr}</div>
-      <div>
+      <div class="action-btns">
         ${d.fileUrl
-          ? `<button class="btn-play-file" onclick="playFile('${d.fileUrl}','${escapedName} · Unit${d.unitId} · ${(d.sentenceIdx||0)+1}번','${escaped}')">▶ 듣기</button>`
+          ? `<button class="btn-play-file" onclick="playFile('${d.fileUrl}','${label}','${escapedFile}')">▶ 듣기</button>`
           : '<span style="color:var(--gray-400);font-size:.82rem;">없음</span>'}
+        <button class="btn-delete-file" onclick="deleteRecord('${d.id}','${d.fileUrl||''}','${escapedFile}')">🗑</button>
       </div>
     </div>`;
 }
@@ -293,6 +303,61 @@ function playFile(url, name, sentence) {
   audio.src = url;
   audio.play();
   panel.classList.add('show');
+}
+
+async function deleteRecord(docId, fileUrl, fileName) {
+  if (!confirm(`🗑 이 기록을 삭제할까요?\n\n파일: ${fileName}\n\n삭제하면 복구할 수 없어요.`)) return;
+
+  try {
+    // Firestore 문서 삭제
+    await window._deleteDoc(window._doc(window._db, 'submissions', docId));
+
+    // Storage 파일 삭제 (파일명으로 경로 추정)
+    if (fileUrl && fileName) {
+      try {
+        // allData에서 studentName, unitId 찾기
+        const record = allData.find(d => d.id === docId);
+        if (record) {
+          const path = `recordings/${record.studentName}/Unit${record.unitId}/${record.fileName}`;
+          const fileRef = window._ref(window._storage, path);
+          await window._deleteObject(fileRef);
+        }
+      } catch(e) {
+        console.warn('Storage 파일 삭제 실패:', e);
+      }
+    }
+
+    // 화면에서 행 제거
+    const row = document.getElementById(`row-${docId}`);
+    if (row) {
+      row.style.transition = 'opacity .3s';
+      row.style.opacity = '0';
+      setTimeout(() => {
+        row.remove();
+        // 데이터도 메모리에서 제거
+        allData = allData.filter(d => d.id !== docId);
+        updateStats();
+        // 남은 데이터 없으면 빈 화면
+        if (!document.querySelector('.table-row')) {
+          document.getElementById('tableWrap').innerHTML =
+            '<div class="empty"><div>📭</div>제출된 녹음이 없어요.</div>';
+        }
+      }, 300);
+    }
+
+    showDeleteToast('✅ 삭제 완료!');
+  } catch(e) {
+    console.error(e);
+    showDeleteToast('❌ 삭제 실패. 다시 시도해주세요.');
+  }
+}
+
+function showDeleteToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1F2937;color:white;padding:11px 22px;border-radius:14px;font-weight:700;font-size:.92rem;z-index:999;';
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
 }
 
 function closeAudio() {
