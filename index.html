@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Point Junior Speaking ⭐</title>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-<script src="https://code.responsivevoice.org/responsivevoice.js?key=FREE"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
@@ -607,6 +606,20 @@ async function startSetRecording() {
     mediaRecorder = new MediaRecorder(stream, mime ? { mimeType: mime } : {});
     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
     mediaRecorder.start(100);
+
+    // 녹음 중에도 스피커로 소리 출력 (통화 모드 방지)
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const silentSrc = audioCtx.createBufferSource();
+      silentSrc.connect(audioCtx.destination);
+      silentSrc.start();
+      // 무음 오디오 엘리먼트로 스피커 모드 유지
+      const silentAudio = new Audio();
+      silentAudio.srcObject = stream;
+      silentAudio.muted = true;
+      silentAudio.play().catch(() => {});
+      window._silentAudio = silentAudio;
+    } catch(e) { console.warn('Speaker mode:', e); }
     isRecording = true;
     recSeconds = 0; updateTimer();
     timerInterval = setInterval(updateTimer, 1000);
@@ -710,27 +723,39 @@ function listenCurrent() {
 }
 function listenFull() { speakSeq(currentUnit.dialogues[dialogueIdx].lines, 0); }
 function speak(text) {
-  if (typeof responsiveVoice !== 'undefined' && responsiveVoice.voiceSupport()) {
-    responsiveVoice.cancel();
-    responsiveVoice.speak(text, 'UK English Female', { pitch:1, rate:0.88, volume:1 });
-  } else {
-    const s = window.speechSynthesis; if (!s) return; s.cancel();
-    const u = new SpeechSynthesisUtterance(text); u.lang='en-US'; u.rate=0.85; s.speak(u);
-  }
+  const s = window.speechSynthesis;
+  if (!s) return;
+  s.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'en-US';
+  u.rate = 0.85;
+  u.pitch = 1.05;
+  // 자연스러운 영어 음성 선택
+  const voices = s.getVoices();
+  const preferred =
+    voices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes('samantha')) ||
+    voices.find(v => v.lang === 'en-US' && !v.name.toLowerCase().includes('compact')) ||
+    voices.find(v => v.lang.startsWith('en-'));
+  if (preferred) u.voice = preferred;
+  s.speak(u);
 }
 function speakSeq(lines, idx) {
   if (idx >= lines.length) return;
-  if (typeof responsiveVoice !== 'undefined' && responsiveVoice.voiceSupport()) {
-    responsiveVoice.cancel();
-    responsiveVoice.speak(lines[idx], 'UK English Female', {
-      pitch:1, rate:0.88, volume:1,
-      onend: () => setTimeout(() => speakSeq(lines, idx+1), 600)
-    });
-  } else {
-    const s = window.speechSynthesis; if (!s) return; s.cancel();
-    const u = new SpeechSynthesisUtterance(lines[idx]); u.lang='en-US'; u.rate=0.85;
-    u.onend = () => setTimeout(() => speakSeq(lines, idx+1), 600); s.speak(u);
-  }
+  const s = window.speechSynthesis;
+  if (!s) return;
+  s.cancel();
+  const u = new SpeechSynthesisUtterance(lines[idx]);
+  u.lang = 'en-US';
+  u.rate = 0.85;
+  u.pitch = 1.05;
+  const voices = s.getVoices();
+  const preferred =
+    voices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes('samantha')) ||
+    voices.find(v => v.lang === 'en-US' && !v.name.toLowerCase().includes('compact')) ||
+    voices.find(v => v.lang.startsWith('en-'));
+  if (preferred) u.voice = preferred;
+  u.onend = () => setTimeout(() => speakSeq(lines, idx+1), 700);
+  s.speak(u);
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -880,7 +905,6 @@ function confirmStop() {
 }
 
 function goHome() {
-  if (typeof responsiveVoice !== 'undefined') responsiveVoice.cancel();
   // Unit 목록 돌아갈 때 스트림 완전 종료
   if (micStream) {
     micStream.getTracks().forEach(t => t.stop());
@@ -898,8 +922,17 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-function init() { renderUnits(); detectKakao(); }
+function init() {
+  // 브라우저 TTS 음성 미리 로드
+  if (window.speechSynthesis) {
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+  }
+  renderUnits();
+  detectKakao();
+}
 init();
 </script>
 </body>
 </html>
+
