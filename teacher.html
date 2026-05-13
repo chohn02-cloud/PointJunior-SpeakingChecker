@@ -247,7 +247,7 @@ function renderTable() {
 function renderList(data, wrap) {
   wrap.innerHTML = `
     <div class="table-head">
-      <div>학생</div><div>Script</div><div>세트</div><div>파일명</div>
+      <div>학생</div><div>Script</div><div>대화#/문장#</div><div>파일명</div>
       <div class="th-date">날짜</div><div>관리</div>
     </div>
     <div class="table-body">
@@ -267,7 +267,7 @@ function renderGrouped(data, wrap) {
       <div class="group-count">${rows.length}개 제출</div>
     </div>
     <div class="table-head">
-      <div>학생</div><div>Script</div><div>세트</div><div>파일명</div>
+      <div>학생</div><div>Script</div><div>대화#/문장#</div><div>파일명</div>
       <div class="th-date">날짜</div><div>관리</div>
     </div>
     ${rows.map(d => rowHTML(d)).join('')}
@@ -278,12 +278,22 @@ function rowHTML(d) {
   const ts = d.submittedAt ? new Date(d.submittedAt.seconds * 1000) : null;
   const dateStr = ts ? `${ts.getMonth()+1}/${ts.getDate()} ${String(ts.getHours()).padStart(2,'0')}:${String(ts.getMinutes()).padStart(2,'0')}` : '-';
   const escapedFile = (d.fileName||'').replace(/'/g,'&#39;');
-  const label = `${d.studentName} · ${d.unitName} · #${d.setNumber||'?'}`;
+
+  // 신규: dialogueNum/sentenceNum / 구버전: setNumber 모두 지원
+  let numLabel = '-';
+  if (d.dialogueNum) {
+    numLabel = `#${d.dialogueNum}-${d.sentenceNum||'?'}`;
+  } else if (d.setNumber) {
+    numLabel = `#${d.setNumber}`;
+  }
+  const unitLabel = d.unitName || `Unit${d.unitId}`;
+  const label = `${d.studentName} · ${unitLabel} · ${numLabel}`;
+
   return `
     <div class="table-row" id="row-${d.id}">
       <div class="student-name">${d.studentName||'-'}</div>
-      <div><span class="unit-badge">${d.unitName||`Unit${d.unitId}`}</span></div>
-      <div><div class="sentence-num">#${d.setNumber||'?'}</div></div>
+      <div><span class="unit-badge">${unitLabel}</span></div>
+      <div><div class="sentence-num" style="font-size:.78rem;font-weight:800;color:var(--orange);">${numLabel}</div></div>
       <div class="sentence-text" title="${escapedFile}">${d.fileName||'-'}</div>
       <div class="date-text">${dateStr}</div>
       <div class="action-btns">
@@ -298,7 +308,7 @@ function rowHTML(d) {
 function playFile(url, name, sentence) {
   const panel = document.getElementById('audioPanel');
   document.getElementById('audioName').textContent = name;
-  document.getElementById('audioSentence').textContent = sentence;
+  document.getElementById('audioSentence').textContent = sentence || '';
   const audio = document.getElementById('audioPlayer');
   audio.src = url;
   audio.play();
@@ -318,7 +328,8 @@ async function deleteRecord(docId, fileUrl, fileName) {
         // allData에서 studentName, unitId 찾기
         const record = allData.find(d => d.id === docId);
         if (record) {
-          const path = `recordings/${record.studentName}/Unit${record.unitId}/${record.fileName}`;
+          const unitFolder = record.unitName ? record.unitName.replace(/\//g,'-') : `Unit${record.unitId}`;
+          const path = `recordings/${record.studentName}/${unitFolder}/${record.fileName}`;
           const fileRef = window._ref(window._storage, path);
           await window._deleteObject(fileRef);
         }
