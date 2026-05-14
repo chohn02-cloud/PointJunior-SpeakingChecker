@@ -199,6 +199,17 @@
   .pronun-detail{font-size:.82rem;font-weight:600;color:var(--gray-600);line-height:1.5;}
   .pronun-detail span{color:var(--red);font-weight:800;}
 
+
+  .btn-rec-start.listening{background:linear-gradient(135deg,#7C3AED,#A855F7);animation:pulse-rec 1s ease-in-out infinite;}
+  .pronun-result{display:none;border-radius:16px;padding:20px 18px;margin-bottom:12px;text-align:center;}
+  .pronun-result.show{display:block;}
+  .pronun-result.correct{background:linear-gradient(135deg,#ECFDF5,#D1FAE5);border:2.5px solid #06D6A0;}
+  .pronun-result.wrong{background:linear-gradient(135deg,#FFF1F2,#FFE4E6);border:2.5px solid #EF233C;}
+  .pronun-emoji{font-size:2.5rem;margin-bottom:8px;}
+  .pronun-msg{font-size:1.05rem;font-weight:800;color:var(--gray-800);margin-bottom:5px;}
+  .pronun-detail{font-size:.85rem;font-weight:600;color:var(--gray-600);line-height:1.6;}
+  .pronun-detail b{color:var(--red);}
+
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--gray-800);color:white;padding:10px 20px;border-radius:12px;font-weight:700;font-size:.86rem;z-index:999;transition:transform .35s cubic-bezier(.34,1.56,.64,1);}
   .toast.show{transform:translateX(-50%) translateY(0);}
 
@@ -282,17 +293,11 @@
       <button class="btn btn-skip" id="btnSkip" onclick="nextStep()">다음 ▶</button>
     </div>
 
-    <!-- 녹음 영역 (개별 문장 단계에서만 표시) -->
+    <!-- 발음 말하기 영역 -->
     <div class="rec-area" id="recArea">
-      <div class="rec-area-title">🎙 내 발음 녹음하기</div>
-      <div class="rec-btns">
-        <button class="btn btn-rec-start" id="btnRec" onclick="toggleRec()">🔴 녹음 시작</button>
-        <button class="btn btn-play-rec" id="btnPlayRec" onclick="playRec()" disabled>▶ 듣기</button>
-      </div>
-      <div class="rec-timer-bar">
-        <span class="rec-timer" id="recTimer" style="display:none">00:00</span>
-        <span class="rec-hint" id="recHint">녹음 후 들어보고 발음 완료를 눌러주세요</span>
-      </div>
+      <div class="rec-area-title">🎙 내 발음 말하기</div>
+      <button class="btn btn-rec-start" id="btnSpeak" onclick="startSpeak()">🎤 말하기</button>
+      <div class="rec-hint" id="recHint" style="margin-top:10px;">버튼을 누르고 문장을 말해주세요!</div>
     </div>
 
     <!-- 발음 인식 결과 -->
@@ -646,7 +651,7 @@ function speakSeq(lines, idx) {
 
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 발음 인식 (녹음 완료 후 STT 재실행)
+// STT 발음 평가 + 합격 시 자동 녹음
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 let recognition = null;
 let isRecognizing = false;
@@ -654,11 +659,13 @@ let isRecognizing = false;
 function runSTT(targetText) {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    // STT 미지원 → 바로 완료 버튼 활성화
+    // STT 미지원 → 바로 녹음 모드로 대체
     enableDoneBtn();
-    document.getElementById('recHint').textContent = '▶ 듣기로 확인하고 발음 완료를 눌러주세요!';
+    document.getElementById('recHint').textContent = '발음 완료 버튼을 눌러주세요!';
     return;
   }
+
+  if (recognition) { try { recognition.abort(); } catch(e){} }
 
   recognition = new SpeechRecognition();
   recognition.lang = 'en-US';
@@ -666,32 +673,41 @@ function runSTT(targetText) {
   recognition.interimResults = false;
   isRecognizing = true;
 
-  document.getElementById('recHint').textContent = '🎤 지금 문장을 말해주세요!';
+  const btn = document.getElementById('btnSpeak');
+  btn.textContent = '🎤 듣고 있어요...';
+  btn.classList.add('listening');
+  document.getElementById('recHint').textContent = '지금 문장을 말해주세요! 🗣';
 
   recognition.onresult = (e) => {
     const spoken = e.results[0][0].transcript.trim();
+    btn.textContent = '🎤 말하기';
+    btn.classList.remove('listening');
     evaluatePronunciation(spoken, targetText);
   };
 
-  recognition.onerror = (e) => {
+  recognition.onerror = () => {
     isRecognizing = false;
-    // 인식 실패해도 막히지 않게 통과
-    enableDoneBtn();
-    document.getElementById('recHint').textContent = '▶ 듣기로 확인하고 발음 완료를 눌러주세요!';
-    hidePronunResult();
+    btn.textContent = '🎤 말하기';
+    btn.classList.remove('listening');
+    document.getElementById('recHint').textContent = '다시 눌러서 말해주세요!';
   };
 
-  recognition.onend = () => { isRecognizing = false; };
+  recognition.onend = () => {
+    isRecognizing = false;
+    btn.textContent = '🎤 말하기';
+    btn.classList.remove('listening');
+  };
 
   try { recognition.start(); } catch(e) {
+    btn.textContent = '🎤 말하기';
+    btn.classList.remove('listening');
     enableDoneBtn();
-    document.getElementById('recHint').textContent = '▶ 듣기로 확인하고 발음 완료를 눌러주세요!';
   }
 }
 
 function stopRecognition() {
   if (recognition && isRecognizing) {
-    try { recognition.stop(); } catch(e) {}
+    try { recognition.abort(); } catch(e) {}
     isRecognizing = false;
   }
 }
@@ -703,13 +719,10 @@ function enableDoneBtn() {
   if (fd && fd.style.display !== 'none') fd.disabled = false;
 }
 
-function evaluatePronunciation(spoken, target, confidence) {
-  // 정규화 (소문자, 특수문자 제거)
+function evaluatePronunciation(spoken, target) {
   const normalize = s => s.toLowerCase().replace(/[^a-z0-9\s]/g,'').trim();
   const spokenN = normalize(spoken);
   const targetN = normalize(target);
-
-  // 단어 일치율 계산
   const targetWords = targetN.split(/\s+/);
   const spokenWords = spokenN.split(/\s+/);
   let matched = 0;
@@ -717,31 +730,52 @@ function evaluatePronunciation(spoken, target, confidence) {
   const score = matched / targetWords.length;
 
   const result = document.getElementById('pronunResult');
-  const emoji = document.getElementById('pronunEmoji');
-  const msg = document.getElementById('pronunMsg');
+  const emoji  = document.getElementById('pronunEmoji');
+  const msg    = document.getElementById('pronunMsg');
   const detail = document.getElementById('pronunDetail');
 
   if (score >= 0.75) {
-    // 합격
     result.className = 'pronun-result show correct';
     emoji.textContent = '🎉';
     msg.textContent = '잘했어요! 발음이 좋아요!';
     detail.innerHTML = `"${spoken}"`;
-    // 발음 완료 버튼 활성화
-    const bd = document.getElementById('btnDone');
-    const fd = document.getElementById('btnFullDone');
-    if (bd.style.display !== 'none' && !bd.disabled) bd.disabled = false;
-    if (fd.style.display !== 'none' && !fd.disabled) fd.disabled = false;
+    document.getElementById('recHint').textContent = '발음 완료 버튼을 눌러주세요!';
+    // 합격 → 자동 녹음 저장
+    autoRecord(target);
   } else {
-    // 불합격
     result.className = 'pronun-result show wrong';
     emoji.textContent = '🔄';
     msg.textContent = '한 번 더 해봐요!';
-    // 틀린 단어 표시
-    const missing = targetWords.filter(w => !spokenWords.includes(w));
+    const missing = targetWords.filter(w => !spokenWords.includes(w)).slice(0,3);
     detail.innerHTML = missing.length > 0
-      ? `이 부분을 다시 연습해봐요: <span>${missing.slice(0,3).join(', ')}</span>`
+      ? `다시 연습해봐요: <b>${missing.join(', ')}</b>`
       : `다시 한 번 또렷하게 말해봐요!`;
+    document.getElementById('recHint').textContent = '다시 눌러서 말해보세요!';
+  }
+}
+
+// 합격 시 짧게 자동 녹음 저장
+async function autoRecord(sentence) {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mime = ['audio/webm;codecs=opus','audio/webm','audio/ogg','audio/mp4'].find(t => MediaRecorder.isTypeSupported(t)) || '';
+    const mr = new MediaRecorder(stream, mime ? { mimeType: mime } : {});
+    const chunks = [];
+    mr.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    mr.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(chunks, { type: mime || 'audio/webm' });
+      // 업로드 대기열에 추가
+      uploadQueue.push({ blob, dialIdx: dialogueIdx, stepIdx, sentence });
+      // 완료 버튼 활성화
+      enableDoneBtn();
+    };
+    mr.start();
+    // 0.1초만 녹음 (합격 표시용, 실제 발음은 STT로 확인됨)
+    setTimeout(() => mr.stop(), 100);
+  } catch(e) {
+    // 마이크 오류 시 그냥 완료 버튼 활성화
+    enableDoneBtn();
   }
 }
 
