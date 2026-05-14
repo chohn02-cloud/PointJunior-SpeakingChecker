@@ -666,7 +666,7 @@ function runSTT(targetText) {
   recognition.interimResults = false;
   isRecognizing = true;
 
-  document.getElementById('recHint').textContent = '🎤 말해주세요... (발음 확인 중)';
+  document.getElementById('recHint').textContent = '🎤 지금 문장을 말해주세요!';
 
   recognition.onresult = (e) => {
     const spoken = e.results[0][0].transcript.trim();
@@ -826,12 +826,13 @@ function handleRecStop() {
   if (!isFullStep) {
     const targetText = currentUnit.dialogues[dialogueIdx].lines[stepIdx] || '';
     if (targetText) {
-      setTimeout(() => runSTT(targetText), 300);
+      // 안드로이드 크롬: 마이크 해제 후 충분한 딜레이 필요
+      document.getElementById('recHint').textContent = '🎤 발음 확인 중... 잠깐만요!';
+      setTimeout(() => runSTT(targetText), 1200);
     } else {
       enableDoneBtn();
     }
   } else {
-    // 전체 발음 단계는 STT 없이 바로 활성화
     enableDoneBtn();
     document.getElementById('recHint').textContent = '▶ 듣기로 확인하고 발음 완료를 눌러주세요!';
   }
