@@ -383,7 +383,8 @@ const units = [
 // ── STATE ──
 let sName = '';
 let tryCount = 0;      // 현재 문장 시도 횟수
-let hardWords = [];    // 5번 이상 틀린 기록 [{dial, step, sentence, words}]
+let hardWords = [];    // 5번 이상 틀린 기록
+let passLog = [];      // 문장별 통과 기록 [{dial, step, tries, sentence}]
 let cUnit = null;
 let dIdx = 0;   // dialogue index
 let sIdx = 0;   // step index (0~N-1: 개별문장, N: 전체)
@@ -580,6 +581,17 @@ function resetSTT() {
   document.getElementById('btnDone').disabled = true;
 }
 
+// 문장 통과 시 기록
+function logPass(tries) {
+  const lines = cUnit.dialogues[dIdx].lines;
+  passLog.push({
+    dial: dIdx + 1,
+    step: sIdx + 1,
+    tries: tries,   // 1=바로통과, 2~4=재시도, 5+=실패
+    sentence: lines[sIdx]
+  });
+}
+
 function doSpeak() {
   window.speechSynthesis && window.speechSynthesis.cancel();
   const target = cUnit.dialogues[dIdx].lines[sIdx];
@@ -656,17 +668,43 @@ function evalPronun(spoken, target) {
   const norm = s => s.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
   const tw = norm(target).split(/\s+/);
   const sw = norm(spoken).split(/\s+/);
+
+  // 불용어 (채점에서 제외)
+  const stopWords = new Set(['a','an','the','i','you','he','she','it','we','they',
+    'is','am','are','was','were','be','been','being','do','does','did',
+    'to','of','in','on','at','for','and','or','but','so','my','your',
+    'his','her','our','its','that','this','if','just','very','so','too']);
+
+  // 핵심 단어만 추출 (불용어 제외, 4글자 이상 우선)
+  const keyWords = tw.filter(w => !stopWords.has(w));
+  const checkWords = keyWords.length > 0 ? keyWords : tw;
+
+  // 정확도 계산 (핵심 단어 기준)
   let hit = 0;
-  tw.forEach(w => { if (sw.includes(w)) hit++; });
-  const score = hit / tw.length;
+  checkWords.forEach(w => {
+    // 완전 일치 또는 앞 4글자 일치 (발음 유사도)
+    if (sw.includes(w) || sw.some(s => s.length >= 4 && w.length >= 4 && s.slice(0,4) === w.slice(0,4))) {
+      hit++;
+    }
+  });
+  const score = hit / checkWords.length;
+
+  // 추가: 발화 길이 체크 (너무 짧으면 무효)
+  const targetLen = tw.length;
+  const spokenLen = sw.length;
+  const lengthRatio = spokenLen / targetLen;
 
   const box = document.getElementById('pronunBox');
   const emoji = document.getElementById('pronunEmoji');
   const msg = document.getElementById('pronunMsg');
   const det = document.getElementById('pronunDet');
 
-  if (score >= 0.75) {
+  // 합격 조건: 핵심단어 85% 이상 + 발화 길이 50% 이상
+  const pass = score >= 0.85 && lengthRatio >= 0.5;
+
+  if (pass) {
     // 합격
+    logPass(tryCount === 0 ? 1 : tryCount + 1);
     tryCount = 0;
     box.className = 'pronun-box ok';
     emoji.textContent = '🎉';
@@ -679,10 +717,12 @@ function evalPronun(spoken, target) {
   } else {
     // 불합격
     tryCount++;
-    const miss = tw.filter(w => !sw.includes(w)).slice(0, 3);
+    const miss = checkWords.filter(w =>
+      !sw.includes(w) && !sw.some(s => s.length >= 4 && w.length >= 4 && s.slice(0,4) === w.slice(0,4))
+    ).slice(0, 3);
 
     if (tryCount >= 5) {
-      // 5번 이상 → 기록하고 자동 넘어가기
+      logPass(5); // 실패로 기록
       hardWords.push({
         dial: dIdx + 1,
         step: sIdx + 1,
@@ -871,24 +911,30 @@ async function uploadRec(blob, di) {
 }
 
 async function saveHardWords(dialIdx) {
-  // 이 대화에서 발생한 틀린 기록만 필터
-  const thisDialRecords = hardWords.filter(r => r.dial === dialIdx + 1);
-  if (thisDialRecords.length === 0) return;
   if (!window._firebaseReady) return;
-
   const fb = window._fb;
+
+  // 이 대화의 틀린 기록
+  const thisHard = hardWords.filter(r => r.dial === dialIdx + 1);
+  // 이 대화의 통과 기록
+  const thisPass = passLog.filter(r => r.dial === dialIdx + 1);
+
+  // 기록이 하나도 없으면 저장 안 함
+  if (thisHard.length === 0 && thisPass.length === 0) return;
+
   try {
     await fb.addDoc(fb.collection(fb.db, 'hardWords'), {
       studentName: sName,
       unitId: cUnit.id,
       unitName: cUnit.name,
       dialogueNum: dialIdx + 1,
-      records: thisDialRecords,
+      hardRecords: thisHard,   // 5번 이상 틀린 것
+      passLog: thisPass,       // 문장별 통과 기록
       submittedAt: fb.serverTimestamp()
     });
-    // 저장된 기록은 배열에서 제거
     hardWords = hardWords.filter(r => r.dial !== dialIdx + 1);
-  } catch(e) { console.error('hardWords 저장 실패:', e); }
+    passLog = passLog.filter(r => r.dial !== dialIdx + 1);
+  } catch(e) { console.error('저장 실패:', e); }
 }
 
 function findNext(from) {
