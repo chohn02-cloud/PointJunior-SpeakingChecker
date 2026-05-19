@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -383,6 +384,7 @@ const units = [
 // ── STATE ──
 let sName = '';
 let tryCount = 0;      // 현재 문장 시도 횟수
+let hasListened = false; // 듣기 버튼 눌렀는지 여부
 let hardWords = [];    // 5번 이상 틀린 기록
 let passLog = [];      // 문장별 통과 기록 [{dial, step, tries, sentence}]
 let cUnit = null;
@@ -541,6 +543,16 @@ function loadStep() {
 function listenNow() {
   const lines = cUnit.dialogues[dIdx].lines;
   sIdx === lines.length ? speakAll(lines, 0) : speak(lines[sIdx]);
+
+  // 개별 문장일 때만 말하기 버튼 활성화
+  if (sIdx < lines.length) {
+    hasListened = true;
+    const btnSpeak = document.getElementById('btnSpeak');
+    if (btnSpeak) {
+      btnSpeak.textContent = '🎤 말하기';
+      btnSpeak.disabled = false;
+    }
+  }
 }
 function speak(text) {
   const s = window.speechSynthesis;
@@ -575,8 +587,11 @@ function speakAll(lines, i) {
 function resetSTT() {
   stopRecog();
   tryCount = 0;
-  document.getElementById('btnSpeak').textContent = '🎤 말하기';
-  document.getElementById('btnSpeak').classList.remove('listening');
+  hasListened = false;
+  const btnSpeak = document.getElementById('btnSpeak');
+  btnSpeak.textContent = '🔊 먼저 듣기 버튼을 눌러주세요!';
+  btnSpeak.disabled = true;
+  btnSpeak.classList.remove('listening');
   document.getElementById('pronunBox').className = 'pronun-box';
   document.getElementById('btnDone').disabled = true;
 }
@@ -593,6 +608,10 @@ function logPass(tries) {
 }
 
 function doSpeak() {
+  if (!hasListened) {
+    showToast('먼저 🔊 듣기 버튼을 눌러주세요!');
+    return;
+  }
   window.speechSynthesis && window.speechSynthesis.cancel();
   const target = cUnit.dialogues[dIdx].lines[sIdx];
   runSTT(target);
@@ -679,13 +698,10 @@ function evalPronun(spoken, target) {
   const keyWords = tw.filter(w => !stopWords.has(w));
   const checkWords = keyWords.length > 0 ? keyWords : tw;
 
-  // 정확도 계산 (핵심 단어 기준)
+  // 정확도 계산 (핵심 단어 완전 일치)
   let hit = 0;
   checkWords.forEach(w => {
-    // 완전 일치 또는 앞 4글자 일치 (발음 유사도)
-    if (sw.includes(w) || sw.some(s => s.length >= 4 && w.length >= 4 && s.slice(0,4) === w.slice(0,4))) {
-      hit++;
-    }
+    if (sw.includes(w)) hit++;
   });
   const score = hit / checkWords.length;
 
@@ -700,7 +716,7 @@ function evalPronun(spoken, target) {
   const det = document.getElementById('pronunDet');
 
   // 합격 조건: 핵심단어 85% 이상 + 발화 길이 50% 이상
-  const pass = score >= 0.85 && lengthRatio >= 0.5;
+  const pass = score >= 0.90 && lengthRatio >= 0.90;
 
   if (pass) {
     // 합격
@@ -717,9 +733,7 @@ function evalPronun(spoken, target) {
   } else {
     // 불합격
     tryCount++;
-    const miss = checkWords.filter(w =>
-      !sw.includes(w) && !sw.some(s => s.length >= 4 && w.length >= 4 && s.slice(0,4) === w.slice(0,4))
-    ).slice(0, 3);
+    const miss = checkWords.filter(w => !sw.includes(w)).slice(0, 3);
 
     if (tryCount >= 5) {
       logPass(5); // 실패로 기록
@@ -919,8 +933,8 @@ async function saveHardWords(dialIdx) {
   // 이 대화의 통과 기록
   const thisPass = passLog.filter(r => r.dial === dialIdx + 1);
 
-  // 기록이 하나도 없으면 저장 안 함
-  if (thisHard.length === 0 && thisPass.length === 0) return;
+  // passLog 기록이 없으면 저장 안 함
+  if (thisPass.length === 0) return;
 
   try {
     await fb.addDoc(fb.collection(fb.db, 'hardWords'), {
