@@ -233,11 +233,11 @@ async function loadHardWords() {
     if (!list) return;
     if (data.length === 0) {
       list.innerHTML = '<div class="hard-empty">아직 기록이 없어요 🎉</div>';
-      badge.textContent = '0명';
+      if (badge) badge.textContent = '0명';
       return;
     }
     const students = new Set(data.map(d => d.studentName));
-    badge.textContent = students.size + '명';
+    if (badge) badge.textContent = students.size + '명';
     list.innerHTML = data.map(d => {
       const hard = d.hardRecords || d.records || [];
       const plog = d.passLog || [];
