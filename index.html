@@ -687,7 +687,8 @@ function evalPronun(spoken, target) {
         dial: dIdx + 1,
         step: sIdx + 1,
         sentence: target,
-        words: miss
+        words: miss,
+        tries: tryCount
       });
       box.className = 'pronun-box ng';
       emoji.textContent = '📝';
@@ -803,20 +804,8 @@ async function markFullDone() {
   if (recBlob && window._firebaseReady) {
     await uploadRec(recBlob, dIdx);
   }
-  // 5번 이상 틀린 기록 Firestore에 저장
-  if (hardWords.length > 0 && window._firebaseReady) {
-    const fb = window._fb;
-    try {
-      await fb.addDoc(fb.collection(fb.db, 'hardWords'), {
-        studentName: sName,
-        unitId: cUnit.id,
-        unitName: cUnit.name,
-        records: hardWords,
-        submittedAt: fb.serverTimestamp()
-      });
-    } catch(e) { console.error(e); }
-    hardWords = []; // 초기화
-  }
+  // 이 대화의 틀린 발음 기록 저장
+  await saveHardWords(dIdx);
 
   doneDials.add(dIdx);
   updateDots();
@@ -879,6 +868,27 @@ async function uploadRec(blob, di) {
       }
     );
   });
+}
+
+async function saveHardWords(dialIdx) {
+  // 이 대화에서 발생한 틀린 기록만 필터
+  const thisDialRecords = hardWords.filter(r => r.dial === dialIdx + 1);
+  if (thisDialRecords.length === 0) return;
+  if (!window._firebaseReady) return;
+
+  const fb = window._fb;
+  try {
+    await fb.addDoc(fb.collection(fb.db, 'hardWords'), {
+      studentName: sName,
+      unitId: cUnit.id,
+      unitName: cUnit.name,
+      dialogueNum: dialIdx + 1,
+      records: thisDialRecords,
+      submittedAt: fb.serverTimestamp()
+    });
+    // 저장된 기록은 배열에서 제거
+    hardWords = hardWords.filter(r => r.dial !== dialIdx + 1);
+  } catch(e) { console.error('hardWords 저장 실패:', e); }
 }
 
 function findNext(from) {
