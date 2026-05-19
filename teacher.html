@@ -238,13 +238,16 @@ async function loadHardWords() {
     }
     const students = new Set(data.map(d => d.studentName));
     badge.textContent = students.size + '명';
-    list.innerHTML = data.flatMap(d =>
-      (d.records || []).map(r => `
+    list.innerHTML = data.map(d => {
+      const hard = d.hardRecords || d.records || [];
+      const plog = d.passLog || [];
+
+      const hardHtml = hard.map(r => `
         <div class="hard-item">
           <div class="hard-item-top">
             <span class="hard-student">👤 ${d.studentName}</span>
-            <span class="hard-unit">${d.unitName}</span>
-            <span class="hard-dial">#${r.dial}-${r.step}번째 문장</span>
+            <span class="hard-unit">${d.unitName} #${d.dialogueNum || r.dial}대화</span>
+            <span class="hard-dial">${r.step}번째 문장</span>
           </div>
           <div class="hard-sentence">"${r.sentence}"</div>
           <div class="hard-words">
@@ -252,8 +255,30 @@ async function loadHardWords() {
               ? r.words.map(w => `<span class="hard-word">${w}</span>`).join('')
               : '<span class="hard-word">전체 재연습 필요</span>'}
           </div>
-        </div>`)
-    ).join('');
+        </div>`).join('');
+
+      const passHtml = plog.length > 0 ? `
+        <div class="hard-item" style="background:#F9FAFB;border-color:#E5E7EB;">
+          <div class="hard-item-top">
+            <span class="hard-student">👤 ${d.studentName}</span>
+            <span class="hard-unit">${d.unitName} #${d.dialogueNum}대화</span>
+            <span style="font-size:.78rem;font-weight:700;color:#059669;">문장별 통과 기록</span>
+          </div>
+          <div class="pass-log">
+            ${plog.map(p => {
+              const cls = p.tries === 1 ? 'pass-1' : p.tries >= 5 ? 'pass-5' : 'pass-2';
+              const label = p.tries === 1 ? '✅ 1번에 통과!' : p.tries >= 5 ? '❌ 실패 (선생님 확인)' : '🔄 ' + p.tries + '번만에 통과';
+              return `<div class="pass-item">
+                <span class="pass-step">${p.step}번째 문장</span>
+                <span class="pass-badge ${cls}">${label}</span>
+                <span style="color:#9CA3AF;font-size:.72rem;">${p.sentence.slice(0,30)}...</span>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>` : '';
+
+      return hardHtml + passHtml;
+    }).join('');
   } catch(e) { console.error('hardWords 로드 실패:', e); }
 }
 
