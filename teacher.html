@@ -132,24 +132,13 @@
     <div class="stat-card"><div class="stat-num" id="statUnits">-</div><div class="stat-label">Unit 종류</div></div>
   </div>
 
-  <!-- 발음 어려움 기록 -->
+  <!-- 발음 기록 섹션 -->
   <div class="hard-section">
     <div class="hard-title">
-      📝 5번 이상 틀린 발음 기록
-      <span class="hard-badge" id="hardBadge">0명</span>
-    </div>
-    <div class="hard-sub">5번 이상 시도했지만 어려웠던 발음이에요. 수업 시간에 함께 확인해주세요!</div>
-    <div class="hard-list" id="hardList">
-      <div class="hard-empty">아직 기록이 없어요 🎉</div>
-    </div>
-  </div>
-
-  <div class="hard-section">
-    <div class="hard-title">
-      📝 5번 이상 틀린 발음 기록
+      📝 문장별 발음 성공 기록
       <span class="hard-badge" id="hardBadge">-</span>
     </div>
-    <div class="hard-sub">5번 이상 시도했지만 어려웠던 발음이에요. 수업 시간에 함께 확인해주세요!</div>
+    <div class="hard-sub">각 문장을 몇 번만에 통과했는지 확인하고, 5번 이상 틀린 발음은 수업 시간에 함께 확인해주세요!</div>
     <div class="hard-list" id="hardList">
       <div class="hard-empty">불러오는 중...</div>
     </div>
@@ -221,6 +210,10 @@ async function loadData() {
 }
 
 async function loadHardWords() {
+  const list = document.getElementById('hardList');
+  const badge = document.getElementById('hardBadge');
+  if (!list) return;
+
   try {
     const q = window._query(
       window._collection(window._db, 'hardWords'),
@@ -228,58 +221,70 @@ async function loadHardWords() {
     );
     const snap = await window._getDocs(q);
     const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const list = document.getElementById('hardList');
-    const badge = document.getElementById('hardBadge');
-    if (!list) return;
+
     if (data.length === 0) {
       list.innerHTML = '<div class="hard-empty">아직 기록이 없어요 🎉</div>';
       if (badge) badge.textContent = '0명';
       return;
     }
+
     const students = new Set(data.map(d => d.studentName));
     if (badge) badge.textContent = students.size + '명';
+
     list.innerHTML = data.map(d => {
       const hard = d.hardRecords || d.records || [];
       const plog = d.passLog || [];
+      const dialNum = d.dialogueNum || (hard[0] && hard[0].dial) || '?';
 
-      const hardHtml = hard.map(r => `
-        <div class="hard-item">
-          <div class="hard-item-top">
-            <span class="hard-student">👤 ${d.studentName}</span>
-            <span class="hard-unit">${d.unitName} #${d.dialogueNum || r.dial}대화</span>
-            <span class="hard-dial">${r.step}번째 문장</span>
-          </div>
-          <div class="hard-sentence">"${r.sentence}"</div>
-          <div class="hard-words">
-            ${r.words && r.words.length
-              ? r.words.map(w => `<span class="hard-word">${w}</span>`).join('')
-              : '<span class="hard-word">전체 재연습 필요</span>'}
-          </div>
-        </div>`).join('');
-
+      // 문장별 통과 기록 카드
       const passHtml = plog.length > 0 ? `
-        <div class="hard-item" style="background:#F9FAFB;border-color:#E5E7EB;">
+        <div class="hard-item" style="background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:12px;padding:12px 16px;margin-bottom:6px;">
           <div class="hard-item-top">
             <span class="hard-student">👤 ${d.studentName}</span>
-            <span class="hard-unit">${d.unitName} #${d.dialogueNum}대화</span>
-            <span style="font-size:.78rem;font-weight:700;color:#059669;">문장별 통과 기록</span>
+            <span class="hard-unit">${d.unitName}</span>
+            <span class="hard-dial">#${dialNum} 대화</span>
           </div>
           <div class="pass-log">
-            ${plog.map(p => {
+            ${plog.sort((a,b) => a.step - b.step).map(p => {
               const cls = p.tries === 1 ? 'pass-1' : p.tries >= 5 ? 'pass-5' : 'pass-2';
-              const label = p.tries === 1 ? '✅ 1번에 통과!' : p.tries >= 5 ? '❌ 실패 (선생님 확인)' : '🔄 ' + p.tries + '번만에 통과';
-              return `<div class="pass-item">
-                <span class="pass-step">${p.step}번째 문장</span>
-                <span class="pass-badge ${cls}">${label}</span>
-                <span style="color:#9CA3AF;font-size:.72rem;">${p.sentence.slice(0,30)}...</span>
-              </div>`;
+              const label = p.tries === 1
+                ? '✅ 1번에 통과!'
+                : p.tries >= 5
+                  ? '❌ 5번 이상 실패'
+                  : '🔄 ' + p.tries + '번만에 통과';
+              return '<div class="pass-item">'
+                + '<span class="pass-step">' + p.step + '번째</span>'
+                + '<span class="pass-badge ' + cls + '">' + label + '</span>'
+                + '<span style="color:#9CA3AF;font-size:.72rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'
+                + (p.sentence || '').slice(0, 35) + '...</span>'
+                + '</div>';
             }).join('')}
           </div>
         </div>` : '';
 
-      return hardHtml + passHtml;
+      // 5번 이상 실패 카드
+      const hardHtml = hard.map(r => `
+        <div class="hard-item" style="margin-bottom:6px;">
+          <div class="hard-item-top">
+            <span class="hard-student">👤 ${d.studentName}</span>
+            <span class="hard-unit">${d.unitName} #${dialNum}-${r.step}번째 문장</span>
+            <span class="hard-dial">⚠️ 5번 이상 실패</span>
+          </div>
+          <div class="hard-sentence">"${r.sentence}"</div>
+          <div class="hard-words">
+            ${r.words && r.words.length
+              ? r.words.map(w => '<span class="hard-word">' + w + '</span>').join('')
+              : '<span class="hard-word">전체 재연습 필요</span>'}
+          </div>
+        </div>`).join('');
+
+      return passHtml + hardHtml;
     }).join('');
-  } catch(e) { console.error('hardWords 로드 실패:', e); }
+
+  } catch(e) {
+    console.error('hardWords 로드 실패:', e);
+    if (list) list.innerHTML = '<div class="hard-empty">데이터를 불러오지 못했어요.</div>';
+  }
 }
 
 function updateStats() {
