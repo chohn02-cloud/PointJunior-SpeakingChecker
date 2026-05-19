@@ -132,6 +132,29 @@
     <div class="stat-card"><div class="stat-num" id="statUnits">-</div><div class="stat-label">Unit 종류</div></div>
   </div>
 
+  <!-- 발음 어려움 기록 -->
+  <div class="hard-section">
+    <div class="hard-title">
+      📝 5번 이상 틀린 발음 기록
+      <span class="hard-badge" id="hardBadge">0명</span>
+    </div>
+    <div class="hard-sub">5번 이상 시도했지만 어려웠던 발음이에요. 수업 시간에 함께 확인해주세요!</div>
+    <div class="hard-list" id="hardList">
+      <div class="hard-empty">아직 기록이 없어요 🎉</div>
+    </div>
+  </div>
+
+  <div class="hard-section">
+    <div class="hard-title">
+      📝 5번 이상 틀린 발음 기록
+      <span class="hard-badge" id="hardBadge">-</span>
+    </div>
+    <div class="hard-sub">5번 이상 시도했지만 어려웠던 발음이에요. 수업 시간에 함께 확인해주세요!</div>
+    <div class="hard-list" id="hardList">
+      <div class="hard-empty">불러오는 중...</div>
+    </div>
+  </div>
+
   <div class="filter-row">
     <span class="filter-label">필터:</span>
     <input class="filter-input" id="filterName" type="text" placeholder="학생 이름 검색..." oninput="renderTable()">
@@ -188,12 +211,50 @@ async function loadData() {
     allData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     updateStats();
     renderTable();
+    loadHardWords();
     const now = new Date();
     document.getElementById('lastUpdate').textContent =
       `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} 업데이트`;
   } catch(e) {
     document.getElementById('tableWrap').innerHTML = '<div class="empty"><div>⚠️</div>데이터를 불러올 수 없어요.<br>Firebase 설정을 확인해주세요.</div>';
   }
+}
+
+async function loadHardWords() {
+  try {
+    const q = window._query(
+      window._collection(window._db, 'hardWords'),
+      window._orderBy('submittedAt', 'desc')
+    );
+    const snap = await window._getDocs(q);
+    const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const list = document.getElementById('hardList');
+    const badge = document.getElementById('hardBadge');
+    if (!list) return;
+    if (data.length === 0) {
+      list.innerHTML = '<div class="hard-empty">아직 기록이 없어요 🎉</div>';
+      badge.textContent = '0명';
+      return;
+    }
+    const students = new Set(data.map(d => d.studentName));
+    badge.textContent = students.size + '명';
+    list.innerHTML = data.flatMap(d =>
+      (d.records || []).map(r => `
+        <div class="hard-item">
+          <div class="hard-item-top">
+            <span class="hard-student">👤 ${d.studentName}</span>
+            <span class="hard-unit">${d.unitName}</span>
+            <span class="hard-dial">#${r.dial}대화 ${r.step}번째 문장</span>
+          </div>
+          <div class="hard-sentence">"${r.sentence}"</div>
+          <div class="hard-words">
+            ${r.words && r.words.length
+              ? r.words.map(w => `<span class="hard-word">${w}</span>`).join('')
+              : '<span class="hard-word">전체 재연습 필요</span>'}
+          </div>
+        </div>`)
+    ).join('');
+  } catch(e) { console.error('hardWords 로드 실패:', e); }
 }
 
 function updateStats() {
