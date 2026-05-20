@@ -57,11 +57,11 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--g8);min-he
 /* MAIN */
 .main{max-width:1200px;margin:0 auto;padding:28px 24px;}
 
-/* STATS ROW */
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
-.stat-card{background:white;border-radius:16px;padding:18px 20px;box-shadow:var(--shadow);}
-.stat-num{font-size:2rem;font-weight:900;color:var(--or);line-height:1;}
-.stat-label{font-size:.78rem;font-weight:700;color:var(--g4);margin-top:4px;}
+/* 상태 뱃지 */
+.status-done{background:#D1FAE5;color:#059669;}
+.status-part{background:#FEF3C7;color:#D97706;}
+.status-none{background:#F3F4F6;color:#9CA3AF;}
+.status-warn{background:#FEE2E2;color:#EF4444;}
 
 /* CLASS SECTION */
 .class-section{margin-bottom:32px;}
@@ -157,13 +157,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--g8);min-he
 </div>
 
 <div class="main">
-  <!-- 통계 -->
-  <div class="stats-row">
-    <div class="stat-card"><div class="stat-num" id="statTotal">-</div><div class="stat-label">전체 제출</div></div>
-    <div class="stat-card"><div class="stat-num" id="statStudents">-</div><div class="stat-label">참여 학생</div></div>
-    <div class="stat-card"><div class="stat-num" id="statToday">-</div><div class="stat-label">오늘 제출</div></div>
-    <div class="stat-card"><div class="stat-num" id="statDials">-</div><div class="stat-label">완료 대화</div></div>
-  </div>
+
 
   <!-- 학생 목록 -->
   <div id="content"><div class="loading">🔄 데이터 불러오는 중...</div></div>
@@ -206,7 +200,6 @@ async function loadAll() {
     ]);
     allSubs = snapSub.docs.map(d => ({id:d.id,...d.data()}));
     allHard = snapHard.docs.map(d => ({id:d.id,...d.data()}));
-    updateStats();
     render();
     const now = new Date();
     document.getElementById('lastUpdate').textContent =
@@ -216,17 +209,7 @@ async function loadAll() {
   }
 }
 
-// ── 통계 ──
-function updateStats() {
-  const today = new Date().toDateString();
-  document.getElementById('statTotal').textContent = allSubs.length;
-  document.getElementById('statStudents').textContent = new Set(allSubs.map(d=>d.studentName)).size;
-  document.getElementById('statToday').textContent = allSubs.filter(d=>{
-    if(!d.submittedAt) return false;
-    return new Date(d.submittedAt.seconds*1000).toDateString()===today;
-  }).length;
-  document.getElementById('statDials').textContent = allSubs.length;
-}
+
 
 // ── 탭 전환 ──
 function switchTab(key) {
@@ -328,8 +311,32 @@ function renderStudentCard(name, data, cls) {
   const scriptKeys = Object.keys(scripts);
   const totalDials = scriptKeys.reduce((sum, k) => sum + Object.keys(scripts[k].dials).length, 0);
 
-  const statusLabel = totalDials === 0 ? '미제출' : `${totalDials}개 완료`;
-  const statusColor = totalDials === 0 ? 'background:rgba(255,255,255,.15)' : 'background:rgba(6,214,160,.25)';
+  // 전체 경고 여부 확인
+  let hasAnyWarning = false;
+  let hasAnyFailure = false;
+  let allRate = 0, allRateCount = 0;
+  Object.values(scripts).forEach(sc => {
+    Object.values(sc.dials || {}).forEach(d => {
+      if ((d.hardRecords||[]).length > 0) hasAnyWarning = true;
+      (d.passLog||[]).forEach(p => {
+        allRateCount++;
+        if (p.tries < 5) allRate++;
+      });
+    });
+  });
+  const avgRate = allRateCount > 0 ? Math.round(allRate/allRateCount*100) : null;
+
+  let statusLabel, statusColor;
+  if (totalDials === 0) {
+    statusLabel = '❌ 미제출';
+    statusColor = 'background:rgba(239,35,60,.3)';
+  } else if (hasAnyWarning || (avgRate !== null && avgRate < 70)) {
+    statusLabel = '⚠️ 확인 필요';
+    statusColor = 'background:rgba(245,158,11,.3)';
+  } else {
+    statusLabel = '✅ 완료';
+    statusColor = 'background:rgba(6,214,160,.25)';
+  }
 
   const initial = name[0];
 
@@ -353,52 +360,79 @@ function renderStudentCard(name, data, cls) {
 }
 
 // ── Script 섹션 렌더 ──
+let expandedSections = new Set(); // 펼쳐진 섹션 추적
+
+function toggleSection(id) {
+  if (expandedSections.has(id)) {
+    expandedSections.delete(id);
+  } else {
+    expandedSections.add(id);
+  }
+  const body = document.getElementById('sb-' + id);
+  const arrow = document.getElementById('sa-' + id);
+  if (body) body.style.display = expandedSections.has(id) ? 'block' : 'none';
+  if (arrow) arrow.textContent = expandedSections.has(id) ? '▲' : '▼';
+}
+
 function renderScriptSection(studentName, scriptKey, scriptData) {
   const dials = scriptData.dials || {};
-  const dialNums = Object.keys(dials).sort((a,b)=>a-b);
+  const dialNums = Object.keys(dials).sort((a,b)=>Number(a)-Number(b));
   const count = dialNums.length;
+  const sectionId = (studentName + scriptKey).replace(/[^a-zA-Z0-9가-힣]/g,'_');
 
   // 전체 성공률 계산
-  let totalSentences = 0, successSentences = 0;
+  let totalSentences = 0, successSentences = 0, hasFailure = false;
   dialNums.forEach(dn => {
     const d = dials[dn];
     const plog = d.passLog || [];
+    const hard = d.hardRecords || [];
     plog.forEach(p => {
       totalSentences++;
       if (p.tries < 5) successSentences++;
     });
+    if (hard.length > 0) hasFailure = true;
   });
   const rate = totalSentences > 0 ? Math.round(successSentences/totalSentences*100) : null;
-  const rateHtml = rate !== null
-    ? `<span class="success-rate ${rate>=80?'rate-high':rate>=50?'rate-mid':'rate-low'}">${rate}%</span>`
-    : '';
 
-  const badgeCls = count === 0 ? 'badge-none' : 'badge-done';
-  const badgeText = count === 0 ? '미완료' : `${count}세트`;
+  // 상태 결정
+  let statusHtml = '';
+  if (count === 0) {
+    statusHtml = '<span class="script-badge badge-none">미제출</span>';
+  } else if (hasFailure || (rate !== null && rate < 70)) {
+    statusHtml = '<span class="script-badge" style="background:#FEF3C7;color:#D97706;">⚠️ 확인 필요</span>';
+  } else if (rate !== null) {
+    statusHtml = '<span class="script-badge badge-done">✅ 완료</span>';
+  }
+
+  const rateHtml = rate !== null
+    ? `<span class="success-rate ${rate>=80?'rate-high':rate>=50?'rate-mid':'rate-low'}" style="font-size:.82rem;font-weight:800;">${rate}%</span>`
+    : '';
 
   return `
     <div class="script-row">
-      <div class="script-row-header">
+      <div class="script-row-header" onclick="toggleSection('${sectionId}')" style="cursor:pointer;">
         <span class="script-name">📖 ${scriptKey}</span>
-        <span class="script-badge ${badgeCls}">${badgeText}</span>
+        ${statusHtml}
         ${rateHtml}
-        <span class="script-dial-count">${count > 0 ? '▼' : ''}</span>
+        ${count > 0 ? `<span class="script-dial-count" id="sa-${sectionId}">▼</span>` : ''}
       </div>
-      ${count > 0 ? `
-      <table class="dial-table">
-        <thead>
-          <tr>
-            <th>대화#</th>
-            <th>발음 성공률</th>
-            <th>문장별 결과</th>
-            <th>완료 시간</th>
-            <th>녹음</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${dialNums.map(dn => renderDialRow(studentName, scriptKey, dials[dn], dn)).join('')}
-        </tbody>
-      </table>` : ''}
+      <div id="sb-${sectionId}" style="display:none;">
+        ${count > 0 ? `
+        <table class="dial-table">
+          <thead>
+            <tr>
+              <th>대화#</th>
+              <th>발음 성공률</th>
+              <th>문장별 결과</th>
+              <th>완료 시간</th>
+              <th>녹음</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${dialNums.map(dn => renderDialRow(studentName, scriptKey, dials[dn], dn)).join('')}
+          </tbody>
+        </table>` : '<div style="padding:12px 16px;color:#9CA3AF;font-size:.8rem;">기록이 없어요</div>'}
+      </div>
     </div>`;
 }
 
