@@ -172,6 +172,41 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);min-height:100vh;}
 </head>
 <body>
 
+<!-- 로그인 오버레이 -->
+<div id="loginOverlay" style="position:fixed;inset:0;z-index:9998;background:linear-gradient(160deg,#FFFBF7 0%,#FFF0E6 50%,#FFFBF7 100%);display:flex;align-items:center;justify-content:center;padding:24px;overflow:hidden;">
+  <div style="position:absolute;top:28px;left:50%;transform:translateX(-50%);color:rgba(255,107,26,.2);font-size:1rem;letter-spacing:10px;white-space:nowrap;">★  ★  ★  ★  ★  ★  ★  ★</div>
+  <div style="background:white;border:1px solid rgba(255,107,26,.15);border-radius:28px;padding:40px 36px 36px;width:100%;max-width:380px;text-align:center;box-shadow:0 12px 40px rgba(255,107,26,.15);position:relative;z-index:1;">
+    <div style="margin-bottom:20px;animation:bounce 1.2s ease infinite;">
+      <img src="logo.png" alt="Point Academy" style="height:88px;width:auto;filter:drop-shadow(0 4px 16px rgba(255,200,50,.4));">
+    </div>
+    <div style="font-size:1.4rem;font-weight:800;color:#3D3228;margin-bottom:6px;">Point Junior <span style="color:#FF6B1A;">Speaking</span></div>
+    <div style="font-size:.85rem;font-weight:600;color:#B0A898;margin-bottom:24px;">이름과 비밀번호를 입력해주세요</div>
+    <div style="width:36px;height:2.5px;background:linear-gradient(90deg,#FF6B1A,#FFD166);border-radius:2px;margin:0 auto 24px;"></div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div style="position:relative;">
+        <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:.95rem;">👤</span>
+        <input id="loginName" type="text" placeholder="이름 (예: 홍길동)" maxlength="10"
+          style="border:2.5px solid #EDE8E0;border-radius:14px;padding:14px 18px 14px 42px;font-family:'Nunito',sans-serif;font-size:1rem;font-weight:700;color:#3D3228;outline:none;background:white;width:100%;"
+          onkeydown="if(event.key==='Enter')document.getElementById('loginPw').focus()"
+          onfocus="this.style.borderColor='#FF6B1A'" onblur="this.style.borderColor='#EDE8E0'">
+      </div>
+      <div style="position:relative;">
+        <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:.95rem;">🔒</span>
+        <input id="loginPw" type="password" placeholder="비밀번호 (숫자 4자리)" maxlength="4"
+          style="border:2.5px solid #EDE8E0;border-radius:14px;padding:14px 18px 14px 42px;font-family:'Nunito',sans-serif;font-size:1rem;font-weight:700;color:#3D3228;outline:none;background:white;width:100%;"
+          onkeydown="if(event.key==='Enter')doLogin()"
+          onfocus="this.style.borderColor='#FF6B1A'" onblur="this.style.borderColor='#EDE8E0'">
+      </div>
+      <div id="loginError" style="display:none;background:rgba(239,35,60,.15);border:1px solid rgba(239,35,60,.4);border-radius:10px;padding:10px 14px;font-size:.85rem;font-weight:700;color:#FF8FA3;">이름 또는 비밀번호가 틀렸어요 😢</div>
+      <button onclick="doLogin()"
+        style="background:linear-gradient(135deg,#FF6B1A,#FF8C42);color:white;border:none;border-radius:14px;padding:16px;font-family:'Nunito',sans-serif;font-size:1rem;font-weight:800;cursor:pointer;width:100%;box-shadow:0 6px 20px rgba(255,107,26,.4);margin-top:4px;">
+        로그인 →
+      </button>
+    </div>
+    <div style="color:#B0A898;font-size:.72rem;font-weight:600;margin-top:22px;">Point Academy © 2025</div>
+  </div>
+</div>
+
 <div class="kakao-banner" id="kkBanner">
   <div class="kakao-inner">
     <div class="kakao-text">📱 카카오톡에서 열었어요!
@@ -193,24 +228,8 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);min-height:100vh;}
 
 <div class="app">
 
-  <!-- 로그인 -->
-  <div class="screen active" id="scName">
-    <div class="login-wrap">
-      <div class="login-logo">
-        <img src="logo.png" alt="Point Academy" style="height:90px;width:auto;">
-      </div>
-      <div class="login-title">안녕하세요! <span>로그인</span>해주세요</div>
-      <div class="login-sub">이름과 비밀번호를 입력해주세요 😊</div>
-      <div class="login-form">
-        <input class="login-input" id="loginName" type="text" placeholder="이름 (예: 홍길동)" maxlength="10"
-          onkeydown="if(event.key==='Enter')document.getElementById('loginPw').focus()">
-        <input class="login-input" id="loginPw" type="password" placeholder="비밀번호 (숫자 4자리)" maxlength="4"
-          onkeydown="if(event.key==='Enter')doLogin()">
-        <div class="login-error" id="loginError">이름 또는 비밀번호가 틀렸어요 😢</div>
-        <button class="btn-login" onclick="doLogin()">로그인 →</button>
-      </div>
-    </div>
-  </div>
+  <!-- 로그인은 별도 overlay (scUnits, scPractice 등과 분리) -->
+  <div class="screen active" id="scName" style="min-height:0;padding:0;"></div>
 
   <!-- Script 선택 -->
   <div class="screen" id="scUnits">
@@ -453,14 +472,17 @@ function doLogin() {
   const name = document.getElementById('loginName').value.trim();
   const pw   = document.getElementById('loginPw').value.trim();
   const err  = document.getElementById('loginError');
+  err.style.display = 'none';
 
   const found = students.find(s => s.name === name && s.pw === pw);
   if (!found) {
-    err.classList.add('show');
+    err.style.display = 'block';
     document.getElementById('loginPw').value = '';
+    document.getElementById('loginPw').focus();
     return;
   }
-  err.classList.remove('show');
+  // 로그인 성공 → overlay 숨기기
+  document.getElementById('loginOverlay').style.display = 'none';
   sName    = found.name;
   sClass   = found.cls;
   sUnitIds = found.unitIds;
