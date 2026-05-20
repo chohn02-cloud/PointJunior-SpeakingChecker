@@ -3,13 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>선생님 관리 페이지 👩‍🏫</title>
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<title>👩‍🏫 선생님 관리 페이지</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, getDocs, query, orderBy, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
   import { getStorage, ref, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
-
+  import { getFirestore, collection, getDocs, query, orderBy, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
   const firebaseConfig = {
     apiKey: "AIzaSyDYOJZNuB72oFPskOunQa0V98eaXFuyfiw",
     authDomain: "point-junior-speaking.firebaseapp.com",
@@ -18,480 +17,488 @@
     messagingSenderId: "155258649103",
     appId: "1:155258649103:web:3eb93c3a79c078acd7817a"
   };
-
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
   const storage = getStorage(app);
-
-  window._db = db;
-  window._storage = storage;
-  window._collection = collection;
-  window._getDocs = getDocs;
-  window._query = query;
-  window._orderBy = orderBy;
-  window._deleteDoc = deleteDoc;
-  window._doc = doc;
-  window._ref = ref;
-  window._deleteObject = deleteObject;
+  window._db = db; window._storage = storage;
+  window._collection = collection; window._getDocs = getDocs;
+  window._query = query; window._orderBy = orderBy;
+  window._deleteDoc = deleteDoc; window._doc = doc;
+  window._ref = ref; window._deleteObject = deleteObject;
   window._firebaseReady = true;
   document.dispatchEvent(new Event('firebaseReady'));
 </script>
 <style>
-  :root {
-    --orange:#FF6B1A; --orange-light:#FF8C42; --orange-pale:#FFF0E6;
-    --yellow:#FFD166; --green:#06D6A0; --blue:#4361EE;
-    --bg:#F8F9FF; --white:#FFFFFF;
-    --gray-100:#F3F4F6; --gray-200:#E5E7EB; --gray-400:#9CA3AF;
-    --gray-600:#6B7280; --gray-800:#1F2937;
-    --shadow:0 4px 20px rgba(0,0,0,.08);
-  }
-  *{margin:0;padding:0;box-sizing:border-box;}
-  body{font-family:'Nunito',sans-serif;background:var(--bg);min-height:100vh;}
+:root{
+  --or:#FF6B1A;--orl:#FF8C42;--orp:#FFF0E6;
+  --bl:#4361EE;--gr:#06D6A0;--rd:#EF233C;--pu:#7C3AED;
+  --bg:#F8F9FC;--white:#FFFFFF;
+  --g1:#F3F4F6;--g2:#E5E7EB;--g4:#9CA3AF;--g6:#6B7280;--g8:#1F2937;
+  --shadow:0 2px 12px rgba(0,0,0,.08);--shadow-lg:0 8px 32px rgba(0,0,0,.12);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--g8);min-height:100vh;}
 
-  .header{background:linear-gradient(135deg,#4361EE,#7B89F4);padding:0 32px;height:68px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 20px rgba(67,97,238,.3);position:sticky;top:0;z-index:100;}
-  .header-logo{font-family:'Nunito',sans-serif;font-size:1.4rem;font-weight:800;color:white;display:flex;align-items:center;gap:8px;}
-  .header-right{display:flex;gap:12px;align-items:center;}
-  .btn-refresh{background:rgba(255,255,255,.2);color:white;border:none;border-radius:10px;padding:8px 16px;font-family:'Nunito',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;transition:all .2s;}
-  .btn-refresh:hover{background:rgba(255,255,255,.35);}
+/* HEADER */
+.header{background:white;border-bottom:1px solid var(--g2);padding:0 28px;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:var(--shadow);}
+.header-left{display:flex;align-items:center;gap:12px;}
+.header-title{font-size:1.15rem;font-weight:800;color:var(--g8);}
+.header-time{font-size:.78rem;font-weight:600;color:var(--g4);}
+.header-btns{display:flex;gap:8px;}
+.btn-refresh{background:var(--bl);color:white;border:none;border-radius:10px;padding:8px 16px;font-family:'Nunito',sans-serif;font-size:.82rem;font-weight:800;cursor:pointer;}
+.btn-reset{background:#FEE2E2;border:1.5px solid #FCA5A5;color:var(--rd);border-radius:10px;padding:8px 14px;font-family:'Nunito',sans-serif;font-size:.82rem;font-weight:800;cursor:pointer;}
 
-  .app{max-width:1100px;margin:0 auto;padding:28px 20px 60px;}
+/* TABS */
+.tabs-wrap{background:white;border-bottom:1px solid var(--g2);padding:0 28px;display:flex;gap:0;overflow-x:auto;}
+.tab{padding:14px 20px;font-size:.88rem;font-weight:700;color:var(--g4);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;transition:all .2s;}
+.tab:hover{color:var(--or);}
+.tab.active{color:var(--or);border-bottom-color:var(--or);font-weight:800;}
 
-  /* STATS */
-  .stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;margin-bottom:32px;}
-  .stat-card{background:white;border-radius:18px;padding:20px 22px;box-shadow:var(--shadow);}
-  .stat-num{font-family:'Nunito',sans-serif;font-size:2.2rem;font-weight:800;color:var(--blue);}
-  .stat-label{font-size:.82rem;font-weight:700;color:var(--gray-400);margin-top:2px;}
+/* MAIN */
+.main{max-width:1200px;margin:0 auto;padding:28px 24px;}
 
-  /* FILTERS */
-  .filter-row{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;align-items:center;}
-  .filter-label{font-size:.88rem;font-weight:700;color:var(--gray-600);}
-  .filter-select{border:2px solid var(--gray-200);border-radius:10px;padding:8px 14px;font-family:'Nunito',sans-serif;font-size:.9rem;font-weight:700;color:var(--gray-800);outline:none;cursor:pointer;background:white;}
-  .filter-select:focus{border-color:var(--blue);}
-  .filter-input{border:2px solid var(--gray-200);border-radius:10px;padding:8px 14px;font-family:'Nunito',sans-serif;font-size:.9rem;font-weight:700;color:var(--gray-800);outline:none;flex:1;min-width:160px;background:white;}
-  .filter-input:focus{border-color:var(--blue);}
+/* STATS ROW */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+.stat-card{background:white;border-radius:16px;padding:18px 20px;box-shadow:var(--shadow);}
+.stat-num{font-size:2rem;font-weight:900;color:var(--or);line-height:1;}
+.stat-label{font-size:.78rem;font-weight:700;color:var(--g4);margin-top:4px;}
 
-  /* TABLE */
-  .table-wrap{background:white;border-radius:20px;box-shadow:var(--shadow);overflow:hidden;}
-  .table-head{background:var(--bg);padding:14px 20px;display:grid;grid-template-columns:110px 90px 60px 1fr 140px 160px;gap:12px;font-size:.78rem;font-weight:800;color:var(--gray-400);letter-spacing:.06em;text-transform:uppercase;border-bottom:2px solid var(--gray-200);}
-  .table-body{}
-  .table-row{padding:14px 20px;display:grid;grid-template-columns:110px 90px 60px 1fr 140px 160px;gap:12px;align-items:center;border-bottom:1px solid var(--gray-100);transition:background .15s;}
-  .table-row:hover{background:var(--bg);}
-  .table-row:last-child{border-bottom:none;}
-  .student-name{font-weight:800;font-size:.95rem;color:var(--gray-800);}
-  .unit-badge{background:var(--orange-pale);color:var(--orange);border-radius:8px;padding:3px 10px;font-size:.78rem;font-weight:800;display:inline-block;}
-  .sentence-num{background:var(--green);color:white;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:800;}
-  .sentence-text{font-size:.88rem;color:var(--gray-600);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .date-text{font-size:.82rem;color:var(--gray-400);font-weight:600;}
-  .btn-play-file{background:linear-gradient(135deg,var(--blue),#7B89F4);color:white;border:none;border-radius:10px;padding:7px 10px;font-family:'Nunito',sans-serif;font-size:.82rem;font-weight:800;cursor:pointer;transition:all .2s;white-space:nowrap;}
-  .btn-play-file:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(67,97,238,.3);}
-  .btn-delete-file{background:white;border:2px solid #FCA5A5;color:#EF4444;border-radius:10px;padding:7px 10px;font-family:'Nunito',sans-serif;font-size:.82rem;font-weight:800;cursor:pointer;transition:all .2s;white-space:nowrap;margin-left:4px;}
-  .btn-delete-file:hover{background:#FEF2F2;border-color:#EF4444;}
-  .action-btns{display:flex;gap:4px;align-items:center;}
+/* CLASS SECTION */
+.class-section{margin-bottom:32px;}
+.class-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+.class-title{font-size:1.1rem;font-weight:800;color:var(--g8);}
+.class-count{background:var(--g1);border-radius:99px;padding:3px 10px;font-size:.75rem;font-weight:700;color:var(--g6);}
 
-  /* AUDIO PLAYER */
-  .audio-panel{position:fixed;bottom:0;left:0;right:0;background:white;border-top:2px solid var(--gray-200);padding:14px 24px;display:none;align-items:center;gap:16px;z-index:50;box-shadow:0 -4px 20px rgba(0,0,0,.08);}
-  .audio-panel.show{display:flex;}
-  .audio-info{flex:1;min-width:0;}
-  .audio-name{font-weight:800;font-size:.95rem;color:var(--gray-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .audio-sentence{font-size:.82rem;color:var(--gray-400);font-weight:600;}
-  audio{flex:2;height:36px;}
-  .btn-close-audio{background:var(--gray-100);border:none;border-radius:10px;padding:8px 14px;font-family:'Nunito',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;color:var(--gray-600);}
+/* STUDENT CARDS */
+.student-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;}
+.student-card{background:white;border-radius:18px;box-shadow:var(--shadow);overflow:hidden;}
+.student-card-header{padding:14px 18px;background:linear-gradient(135deg,var(--or),var(--orl));display:flex;align-items:center;gap:10px;}
+.student-avatar{width:36px;height:36px;background:rgba(255,255,255,.25);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:800;color:white;flex-shrink:0;}
+.student-name{font-size:1rem;font-weight:800;color:white;}
+.student-class{font-size:.72rem;color:rgba(255,255,255,.75);font-weight:600;}
+.student-status{margin-left:auto;font-size:.72rem;font-weight:800;background:rgba(255,255,255,.2);color:white;border-radius:99px;padding:3px 10px;}
 
-  /* LOADING */
-  .loading{text-align:center;padding:60px;color:var(--gray-400);font-weight:700;font-size:1.1rem;}
-  .empty{text-align:center;padding:60px;color:var(--gray-400);font-weight:700;}
-  .empty div{font-size:3rem;margin-bottom:12px;}
+/* SCRIPT PROGRESS */
+.script-list{padding:14px 18px;display:flex;flex-direction:column;gap:10px;}
+.script-row{border:1.5px solid var(--g2);border-radius:12px;overflow:hidden;}
+.script-row-header{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--g1);cursor:pointer;}
+.script-name{font-size:.85rem;font-weight:800;color:var(--g8);}
+.script-badge{font-size:.7rem;font-weight:800;border-radius:99px;padding:2px 8px;}
+.badge-done{background:#D1FAE5;color:#059669;}
+.badge-part{background:#FEF3C7;color:#D97706;}
+.badge-none{background:var(--g2);color:var(--g6);}
+.script-dial-count{font-size:.72rem;color:var(--g4);font-weight:600;margin-left:auto;}
 
-  /* GROUPED VIEW */
-  .group-header{padding:12px 20px;background:var(--bg);border-bottom:1px solid var(--gray-200);display:flex;align-items:center;gap:12px;}
-  .group-name{font-family:'Nunito',sans-serif;font-size:1.1rem;font-weight:800;color:var(--gray-800);}
-  .group-count{background:var(--blue);color:white;border-radius:99px;padding:2px 10px;font-size:.75rem;font-weight:800;}
+/* DIALOGUE TABLE */
+.dial-table{width:100%;border-collapse:collapse;font-size:.78rem;}
+.dial-table th{background:var(--g1);padding:7px 12px;text-align:left;font-weight:800;color:var(--g6);font-size:.72rem;}
+.dial-table td{padding:8px 12px;border-top:1px solid var(--g1);vertical-align:middle;}
+.dial-table tr:hover td{background:#FAFAFA;}
+.dial-num-badge{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:.68rem;font-weight:800;color:white;flex-shrink:0;}
+.try-1{background:var(--gr);}
+.try-2{background:#F59E0B;}
+.try-5{background:var(--rd);}
+.try-none{background:var(--g4);}
+.play-btn{background:var(--bl);color:white;border:none;border-radius:8px;padding:5px 10px;font-family:'Nunito',sans-serif;font-size:.72rem;font-weight:800;cursor:pointer;white-space:nowrap;}
+.del-btn{background:white;border:1.5px solid #FCA5A5;color:var(--rd);border-radius:8px;padding:5px 8px;font-family:'Nunito',sans-serif;font-size:.72rem;font-weight:800;cursor:pointer;margin-left:4px;}
+.success-rate{font-weight:800;font-size:.78rem;}
+.rate-high{color:var(--gr);}
+.rate-mid{color:#F59E0B;}
+.rate-low{color:var(--rd);}
 
-  @media(max-width:700px){
-    .table-head,.table-row{grid-template-columns:100px 70px 40px 1fr 100px;}
-    .table-head .th-date,.table-row .date-text{display:none;}
-  }
+/* AUDIO PANEL */
+.audio-panel{display:none;position:fixed;bottom:24px;right:24px;background:white;border-radius:18px;box-shadow:var(--shadow-lg);padding:18px 20px;min-width:300px;max-width:380px;z-index:200;border:1px solid var(--g2);}
+.audio-panel.show{display:block;}
+.audio-panel-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.audio-panel-name{font-size:.88rem;font-weight:800;color:var(--g8);}
+.audio-close{background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--g4);}
+.audio-player{width:100%;border-radius:8px;margin-top:4px;}
+
+/* EMPTY */
+.empty-state{text-align:center;padding:48px 20px;color:var(--g4);}
+.empty-state div{font-size:2.5rem;margin-bottom:10px;}
+.empty-state p{font-size:.9rem;font-weight:600;}
+
+/* LOADING */
+.loading{text-align:center;padding:40px;color:var(--g4);font-weight:700;}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--g8);color:white;padding:10px 20px;border-radius:12px;font-weight:700;font-size:.86rem;z-index:999;transition:transform .35s cubic-bezier(.34,1.56,.64,1);}
+.toast.show{transform:translateX(-50%) translateY(0);}
+
+@media(max-width:768px){
+  .stats-row{grid-template-columns:repeat(2,1fr);}
+  .student-grid{grid-template-columns:1fr;}
+  .header{padding:0 16px;}
+  .main{padding:16px;}
+  .tabs-wrap{padding:0 16px;}
+}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div class="header-logo">👩‍🏫 선생님 관리 페이지</div>
-  <div class="header-right">
-    <span style="color:rgba(255,255,255,.7);font-size:.85rem;font-weight:700;" id="lastUpdate"></span>
-    <button class="btn-refresh" onclick="loadData()">🔄 새로고침</button>
-    <button onclick="resetAll()" style="background:#FEE2E2;border:1.5px solid #FCA5A5;color:#EF4444;border-radius:10px;padding:8px 14px;font-family:'Nunito',sans-serif;font-size:.82rem;font-weight:800;cursor:pointer;margin-left:8px;">🗑 초기화</button>
+  <div class="header-left">
+    <div class="header-title">👩‍🏫 선생님 관리 페이지</div>
+    <div class="header-time" id="lastUpdate">-</div>
+  </div>
+  <div class="header-btns">
+    <button class="btn-refresh" onclick="loadAll()">🔄 새로고침</button>
+    <button class="btn-reset" onclick="resetAll()">🗑 초기화</button>
   </div>
 </div>
 
-<div class="app">
+<!-- 탭 -->
+<div class="tabs-wrap">
+  <div class="tab active" onclick="switchTab('all')" id="tab-all">전체</div>
+  <div class="tab" onclick="switchTab('ES1')" id="tab-ES1">E.S.1반</div>
+  <div class="tab" onclick="switchTab('ES2')" id="tab-ES2">E.S.2반</div>
+  <div class="tab" onclick="switchTab('ES3')" id="tab-ES3">E.S.3반</div>
+  <div class="tab" onclick="switchTab('PES')" id="tab-PES">P-E.S반</div>
+</div>
 
-  <div class="stats-row" id="statsRow">
+<div class="main">
+  <!-- 통계 -->
+  <div class="stats-row">
     <div class="stat-card"><div class="stat-num" id="statTotal">-</div><div class="stat-label">전체 제출</div></div>
     <div class="stat-card"><div class="stat-num" id="statStudents">-</div><div class="stat-label">참여 학생</div></div>
     <div class="stat-card"><div class="stat-num" id="statToday">-</div><div class="stat-label">오늘 제출</div></div>
-    <div class="stat-card"><div class="stat-num" id="statUnits">-</div><div class="stat-label">Unit 종류</div></div>
+    <div class="stat-card"><div class="stat-num" id="statDials">-</div><div class="stat-label">완료 대화</div></div>
   </div>
 
-  <!-- 발음 기록 섹션 -->
-  <div class="hard-section">
-    <div class="hard-title">
-      📝 문장별 발음 성공 기록
-      <span class="hard-badge" id="hardBadge">-</span>
-    </div>
-    <div class="hard-sub">각 문장을 몇 번만에 통과했는지 확인하고, 5번 이상 틀린 발음은 수업 시간에 함께 확인해주세요!</div>
-    <div class="hard-list" id="hardList">
-      <div class="hard-empty">불러오는 중...</div>
-    </div>
-  </div>
-
-  <div class="filter-row">
-    <span class="filter-label">필터:</span>
-    <input class="filter-input" id="filterName" type="text" placeholder="학생 이름 검색..." oninput="renderTable()">
-    <select class="filter-select" id="filterUnit" onchange="renderTable()">
-      <option value="">전체 Unit</option>
-      <option value="1">Unit 1</option>
-      <option value="2">Unit 2</option>
-      <option value="3">Unit 3</option>
-      <option value="4">Unit 4</option>
-      <option value="5">Unit 5</option>
-      <option value="6">Unit 6</option>
-    </select>
-    <select class="filter-select" id="filterDate" onchange="renderTable()">
-      <option value="">전체 날짜</option>
-      <option value="today">오늘</option>
-      <option value="week">이번 주</option>
-    </select>
-    <select class="filter-select" id="filterGroup" onchange="renderTable()">
-      <option value="list">목록 보기</option>
-      <option value="student">학생별 묶기</option>
-    </select>
-  </div>
-
-  <div class="table-wrap" id="tableWrap">
-    <div class="loading">🔄 데이터 불러오는 중...</div>
-  </div>
-
+  <!-- 학생 목록 -->
+  <div id="content"><div class="loading">🔄 데이터 불러오는 중...</div></div>
 </div>
 
-<!-- 오디오 플레이어 -->
+<!-- 오디오 패널 -->
 <div class="audio-panel" id="audioPanel">
-  <div class="audio-info">
-    <div class="audio-name" id="audioName"></div>
-    <div class="audio-sentence" id="audioSentence"></div>
+  <div class="audio-panel-top">
+    <div class="audio-panel-name" id="audioName">-</div>
+    <button class="audio-close" onclick="closeAudio()">✕</button>
   </div>
-  <audio id="audioPlayer" controls></audio>
-  <button class="btn-close-audio" onclick="closeAudio()">✕ 닫기</button>
+  <audio class="audio-player" id="audioPlayer" controls></audio>
 </div>
+
+<div class="toast" id="toast"></div>
 
 <script>
-let allData = [];
+// ── 학생 명단 (speaking_practice.html과 동일하게 유지) ──
+const CLASS_MAP = {
+  "김태연":"E.S.1반","박주성":"E.S.1반","정진호":"E.S.1반",
+  "한바로":"E.S.1반","안서윤":"E.S.1반","강민서":"E.S.1반",
+  "김지안":"E.S.2반","백지선":"E.S.2반","김승아":"E.S.2반",
+  "정선우":"E.S.3반",
+  "강준서":"P-E.S반",
+};
+const CLASS_LIST = ["E.S.1반","E.S.2반","E.S.3반","P-E.S반"];
+const TAB_KEY = {"all":"전체","ES1":"E.S.1반","ES2":"E.S.2반","ES3":"E.S.3반","PES":"P-E.S반"};
 
-document.addEventListener('firebaseReady', () => { loadData(); });
-if (window._firebaseReady) loadData();
+let allSubs = [];    // submissions
+let allHard = [];    // hardWords (passLog)
+let currentTab = 'all';
 
-async function loadData() {
-  document.getElementById('tableWrap').innerHTML = '<div class="loading">🔄 데이터 불러오는 중...</div>';
+// ── 데이터 로드 ──
+async function loadAll() {
+  document.getElementById('content').innerHTML = '<div class="loading">🔄 데이터 불러오는 중...</div>';
   try {
-    const q = window._query(
-      window._collection(window._db, 'submissions'),
-      window._orderBy('submittedAt', 'desc')
-    );
-    const snap = await window._getDocs(q);
-    allData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const [snapSub, snapHard] = await Promise.all([
+      window._getDocs(window._query(window._collection(window._db,'submissions'), window._orderBy('submittedAt','desc'))),
+      window._getDocs(window._query(window._collection(window._db,'hardWords'), window._orderBy('submittedAt','desc')))
+    ]);
+    allSubs = snapSub.docs.map(d => ({id:d.id,...d.data()}));
+    allHard = snapHard.docs.map(d => ({id:d.id,...d.data()}));
     updateStats();
-    renderTable();
-    loadHardWords();
+    render();
     const now = new Date();
     document.getElementById('lastUpdate').textContent =
       `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} 업데이트`;
   } catch(e) {
-    document.getElementById('tableWrap').innerHTML = '<div class="empty"><div>⚠️</div>데이터를 불러올 수 없어요.<br>Firebase 설정을 확인해주세요.</div>';
+    document.getElementById('content').innerHTML = '<div class="empty-state"><div>⚠️</div><p>데이터를 불러올 수 없어요</p></div>';
   }
 }
 
-async function loadHardWords() {
-  const list = document.getElementById('hardList');
-  const badge = document.getElementById('hardBadge');
-  if (!list) return;
-
-  try {
-    const q = window._query(
-      window._collection(window._db, 'hardWords'),
-      window._orderBy('submittedAt', 'desc')
-    );
-    const snap = await window._getDocs(q);
-    const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-    if (data.length === 0) {
-      list.innerHTML = '<div class="hard-empty">아직 기록이 없어요 🎉</div>';
-      if (badge) badge.textContent = '0명';
-      return;
-    }
-
-    const students = new Set(data.map(d => d.studentName));
-    if (badge) badge.textContent = students.size + '명';
-
-    list.innerHTML = data.map(d => {
-      const hard = d.hardRecords || d.records || [];
-      const plog = d.passLog || [];
-      const dialNum = d.dialogueNum || (hard[0] && hard[0].dial) || '?';
-
-      // 문장별 통과 기록 카드
-      const passHtml = plog.length > 0 ? `
-        <div class="hard-item" style="background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:12px;padding:12px 16px;margin-bottom:6px;">
-          <div class="hard-item-top">
-            <span class="hard-student">👤 ${d.studentName}</span>
-            <span class="hard-unit">${d.unitName}</span>
-            <span class="hard-dial">#${dialNum} 대화</span>
-          </div>
-          <div class="pass-log">
-            ${plog.sort((a,b) => a.step - b.step).map(p => {
-              const cls = p.tries === 1 ? 'pass-1' : p.tries >= 5 ? 'pass-5' : 'pass-2';
-              const label = p.tries === 1
-                ? '✅ 1번에 통과!'
-                : p.tries >= 5
-                  ? '❌ 5번 이상 실패'
-                  : '🔄 ' + p.tries + '번만에 통과';
-              return '<div class="pass-item">'
-                + '<span class="pass-step">' + p.step + '번째</span>'
-                + '<span class="pass-badge ' + cls + '">' + label + '</span>'
-                + '<span style="color:#9CA3AF;font-size:.72rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'
-                + (p.sentence || '').slice(0, 35) + '...</span>'
-                + '</div>';
-            }).join('')}
-          </div>
-        </div>` : '';
-
-      // 5번 이상 실패 카드
-      const hardHtml = hard.map(r => `
-        <div class="hard-item" style="margin-bottom:6px;">
-          <div class="hard-item-top">
-            <span class="hard-student">👤 ${d.studentName}</span>
-            <span class="hard-unit">${d.unitName} #${dialNum}-${r.step}번째 문장</span>
-            <span class="hard-dial">⚠️ 5번 이상 실패</span>
-          </div>
-          <div class="hard-sentence">"${r.sentence}"</div>
-          <div class="hard-words">
-            ${r.words && r.words.length
-              ? r.words.map(w => '<span class="hard-word">' + w + '</span>').join('')
-              : '<span class="hard-word">전체 재연습 필요</span>'}
-          </div>
-        </div>`).join('');
-
-      return passHtml + hardHtml;
-    }).join('');
-
-  } catch(e) {
-    console.error('hardWords 로드 실패:', e);
-    if (list) list.innerHTML = '<div class="hard-empty">데이터를 불러오지 못했어요.</div>';
-  }
-}
-
+// ── 통계 ──
 function updateStats() {
   const today = new Date().toDateString();
-  document.getElementById('statTotal').textContent    = allData.length;
-  document.getElementById('statStudents').textContent = new Set(allData.map(d => d.studentName)).size;
-  document.getElementById('statToday').textContent    = allData.filter(d => {
-    if (!d.submittedAt) return false;
-    return new Date(d.submittedAt.seconds * 1000).toDateString() === today;
+  document.getElementById('statTotal').textContent = allSubs.length;
+  document.getElementById('statStudents').textContent = new Set(allSubs.map(d=>d.studentName)).size;
+  document.getElementById('statToday').textContent = allSubs.filter(d=>{
+    if(!d.submittedAt) return false;
+    return new Date(d.submittedAt.seconds*1000).toDateString()===today;
   }).length;
-  document.getElementById('statUnits').textContent    = new Set(allData.map(d => d.unitId)).size;
+  document.getElementById('statDials').textContent = allSubs.length;
 }
 
-function getFiltered() {
-  const name  = document.getElementById('filterName').value.trim().toLowerCase();
-  const unit  = document.getElementById('filterUnit').value;
-  const date  = document.getElementById('filterDate').value;
-  const now   = new Date();
-  const todayStr = now.toDateString();
-  const weekAgo  = new Date(now - 7 * 864e5);
-
-  return allData.filter(d => {
-    if (name && !d.studentName?.toLowerCase().includes(name)) return false;
-    if (unit && String(d.unitId) !== unit) return false;
-    if (date && d.submittedAt) {
-      const t = new Date(d.submittedAt.seconds * 1000);
-      if (date === 'today' && t.toDateString() !== todayStr) return false;
-      if (date === 'week' && t < weekAgo) return false;
-    }
-    return true;
-  });
+// ── 탭 전환 ──
+function switchTab(key) {
+  currentTab = key;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+key).classList.add('active');
+  render();
 }
 
-function renderTable() {
-  const data   = getFiltered();
-  const group  = document.getElementById('filterGroup').value;
-  const wrap   = document.getElementById('tableWrap');
+// ── 메인 렌더 ──
+function render() {
+  const targetClasses = currentTab === 'all' ? CLASS_LIST : [TAB_KEY[currentTab]];
 
-  if (!data.length) {
-    wrap.innerHTML = '<div class="empty"><div>📭</div>제출된 녹음이 없어요.</div>';
-    return;
-  }
+  // 학생별 데이터 그룹핑
+  const studentData = buildStudentData();
 
-  if (group === 'student') {
-    renderGrouped(data, wrap);
-  } else {
-    renderList(data, wrap);
-  }
-}
+  let html = '';
+  for (const cls of targetClasses) {
+    const members = Object.entries(CLASS_MAP).filter(([,c])=>c===cls).map(([n])=>n);
+    if (members.length === 0) continue;
 
-function renderList(data, wrap) {
-  wrap.innerHTML = `
-    <div class="table-head">
-      <div>학생</div><div>Script</div><div>대화#/문장#</div><div>파일명</div>
-      <div class="th-date">날짜</div><div>관리</div>
-    </div>
-    <div class="table-body">
-      ${data.map(d => rowHTML(d)).join('')}
-    </div>`;
-}
+    // 관리자 포인트가 테스트한 것도 포함
+    const unknownStudents = Object.keys(studentData).filter(n =>
+      !Object.keys(CLASS_MAP).includes(n) && n !== '포인트'
+    );
 
-function renderGrouped(data, wrap) {
-  const groups = {};
-  data.forEach(d => {
-    if (!groups[d.studentName]) groups[d.studentName] = [];
-    groups[d.studentName].push(d);
-  });
-  wrap.innerHTML = Object.entries(groups).map(([name, rows]) => `
-    <div class="group-header">
-      <div class="group-name">👤 ${name}</div>
-      <div class="group-count">${rows.length}개 제출</div>
-    </div>
-    <div class="table-head">
-      <div>학생</div><div>Script</div><div>대화#/문장#</div><div>파일명</div>
-      <div class="th-date">날짜</div><div>관리</div>
-    </div>
-    ${rows.map(d => rowHTML(d)).join('')}
-  `).join('');
-}
+    const showMembers = currentTab === 'all'
+      ? [...members, ...unknownStudents.filter(n => !members.includes(n))]
+      : members;
 
-function rowHTML(d) {
-  const ts = d.submittedAt ? new Date(d.submittedAt.seconds * 1000) : null;
-  const dateStr = ts ? `${ts.getMonth()+1}/${ts.getDate()} ${String(ts.getHours()).padStart(2,'0')}:${String(ts.getMinutes()).padStart(2,'0')}` : '-';
-  const escapedFile = (d.fileName||'').replace(/'/g,'&#39;');
-
-  // 신규: dialogueNum/sentenceNum / 구버전: setNumber 모두 지원
-  let numLabel = '-';
-  if (d.dialogueNum) {
-    numLabel = `#${d.dialogueNum}-${d.sentenceNum||'?'}`;
-  } else if (d.setNumber) {
-    numLabel = `#${d.setNumber}`;
-  }
-  const unitLabel = d.unitName || `Unit${d.unitId}`;
-  const label = `${d.studentName} · ${unitLabel} · ${numLabel}`;
-
-  return `
-    <div class="table-row" id="row-${d.id}">
-      <div class="student-name">${d.studentName||'-'}</div>
-      <div><span class="unit-badge">${unitLabel}</span></div>
-      <div><div class="sentence-num" style="font-size:.78rem;font-weight:800;color:var(--orange);">${numLabel}</div></div>
-      <div class="sentence-text" title="${escapedFile}">${d.fileName||'-'}</div>
-      <div class="date-text">${dateStr}</div>
-      <div class="action-btns">
-        ${d.fileUrl
-          ? `<button class="btn-play-file" onclick="playFile('${d.fileUrl}','${label}','${escapedFile}')">▶ 듣기</button>`
-          : '<span style="color:var(--gray-400);font-size:.82rem;">없음</span>'}
-        <button class="btn-delete-file" onclick="deleteRecord('${d.id}','${d.fileUrl||''}','${escapedFile}')">🗑</button>
+    html += `<div class="class-section">
+      <div class="class-header">
+        <div class="class-title">${cls}</div>
+        <div class="class-count">${members.length}명</div>
+      </div>
+      <div class="student-grid">
+        ${members.map(name => renderStudentCard(name, studentData[name] || {}, cls)).join('')}
       </div>
     </div>`;
+  }
+
+  // 관리자/미분류 학생
+  const knownNames = Object.keys(CLASS_MAP);
+  const unknown = Object.keys(studentData).filter(n => !knownNames.includes(n));
+  if (unknown.length > 0 && currentTab === 'all') {
+    html += `<div class="class-section">
+      <div class="class-header"><div class="class-title">기타</div></div>
+      <div class="student-grid">
+        ${unknown.map(name => renderStudentCard(name, studentData[name] || {}, '기타')).join('')}
+      </div>
+    </div>`;
+  }
+
+  document.getElementById('content').innerHTML = html || '<div class="empty-state"><div>📭</div><p>해당 반 데이터가 없어요</p></div>';
 }
 
-function playFile(url, name, sentence) {
+// ── 학생별 데이터 구조화 ──
+function buildStudentData() {
+  const data = {};
+
+  // submissions 처리
+  allSubs.forEach(s => {
+    const n = s.studentName;
+    if (!data[n]) data[n] = { scripts: {} };
+    const key = s.unitName || `Unit${s.unitId}`;
+    if (!data[n].scripts[key]) data[n].scripts[key] = { dials: {} };
+    const dNum = s.dialogueNum || 1;
+    data[n].scripts[key].dials[dNum] = {
+      ...data[n].scripts[key].dials[dNum],
+      fileUrl: s.fileUrl,
+      fileName: s.fileName,
+      subId: s.id,
+      submittedAt: s.submittedAt,
+      unitName: s.unitName,
+      unitId: s.unitId,
+      dialogueNum: dNum,
+      studentName: n,
+    };
+  });
+
+  // hardWords (passLog) 처리
+  allHard.forEach(h => {
+    const n = h.studentName;
+    if (!data[n]) data[n] = { scripts: {} };
+    const key = h.unitName || `Unit${h.unitId}`;
+    if (!data[n].scripts[key]) data[n].scripts[key] = { dials: {} };
+    const dNum = h.dialogueNum || 1;
+    if (!data[n].scripts[key].dials[dNum]) data[n].scripts[key].dials[dNum] = {};
+    data[n].scripts[key].dials[dNum].passLog = h.passLog || [];
+    data[n].scripts[key].dials[dNum].hardRecords = h.hardRecords || h.records || [];
+  });
+
+  return data;
+}
+
+// ── 학생 카드 렌더 ──
+function renderStudentCard(name, data, cls) {
+  const scripts = data.scripts || {};
+  const scriptKeys = Object.keys(scripts);
+  const totalDials = scriptKeys.reduce((sum, k) => sum + Object.keys(scripts[k].dials).length, 0);
+
+  const statusLabel = totalDials === 0 ? '미제출' : `${totalDials}개 완료`;
+  const statusColor = totalDials === 0 ? 'background:rgba(255,255,255,.15)' : 'background:rgba(6,214,160,.25)';
+
+  const initial = name[0];
+
+  const scriptsHtml = scriptKeys.length === 0
+    ? '<div style="padding:14px 18px;color:#9CA3AF;font-size:.82rem;font-weight:600;">아직 제출한 녹음이 없어요</div>'
+    : scriptKeys.map(key => renderScriptSection(name, key, scripts[key])).join('');
+
+  return `
+    <div class="student-card">
+      <div class="student-card-header">
+        <div class="student-avatar">${initial}</div>
+        <div>
+          <div class="student-name">${name}</div>
+          <div class="student-class">${cls}</div>
+        </div>
+        <div class="student-status" style="${statusColor}">${statusLabel}</div>
+      </div>
+      <div class="script-list">${scriptsHtml}</div>
+    </div>`;
+}
+
+// ── Script 섹션 렌더 ──
+function renderScriptSection(studentName, scriptKey, scriptData) {
+  const dials = scriptData.dials || {};
+  const dialNums = Object.keys(dials).sort((a,b)=>a-b);
+  const count = dialNums.length;
+
+  // 전체 성공률 계산
+  let totalSentences = 0, successSentences = 0;
+  dialNums.forEach(dn => {
+    const d = dials[dn];
+    const plog = d.passLog || [];
+    plog.forEach(p => {
+      totalSentences++;
+      if (p.tries < 5) successSentences++;
+    });
+  });
+  const rate = totalSentences > 0 ? Math.round(successSentences/totalSentences*100) : null;
+  const rateHtml = rate !== null
+    ? `<span class="success-rate ${rate>=80?'rate-high':rate>=50?'rate-mid':'rate-low'}">${rate}%</span>`
+    : '';
+
+  const badgeCls = count === 0 ? 'badge-none' : 'badge-done';
+  const badgeText = count === 0 ? '미완료' : `${count}세트`;
+
+  return `
+    <div class="script-row">
+      <div class="script-row-header">
+        <span class="script-name">📖 ${scriptKey}</span>
+        <span class="script-badge ${badgeCls}">${badgeText}</span>
+        ${rateHtml}
+        <span class="script-dial-count">${count > 0 ? '▼' : ''}</span>
+      </div>
+      ${count > 0 ? `
+      <table class="dial-table">
+        <thead>
+          <tr>
+            <th>대화#</th>
+            <th>발음 성공률</th>
+            <th>문장별 결과</th>
+            <th>완료 시간</th>
+            <th>녹음</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${dialNums.map(dn => renderDialRow(studentName, scriptKey, dials[dn], dn)).join('')}
+        </tbody>
+      </table>` : ''}
+    </div>`;
+}
+
+// ── 대화 행 렌더 ──
+function renderDialRow(studentName, scriptKey, dial, dialNum) {
+  const plog = (dial.passLog || []).sort((a,b)=>a.step-b.step);
+  const hard = dial.hardRecords || [];
+
+  // 성공률
+  const total = plog.length;
+  const success = plog.filter(p=>p.tries < 5).length;
+  const rate = total > 0 ? Math.round(success/total*100) : null;
+  const rateHtml = rate !== null
+    ? `<span class="success-rate ${rate>=80?'rate-high':rate>=50?'rate-mid':'rate-low'}">${rate}%<span style="font-size:.68rem;font-weight:600;color:#9CA3AF;"> (${success}/${total})</span></span>`
+    : '<span style="color:#9CA3AF;font-size:.75rem;">기록없음</span>';
+
+  // 문장별 뱃지
+  const badges = plog.map(p => {
+    const cls = p.tries===1?'try-1':p.tries>=5?'try-5':'try-2';
+    const label = p.tries===1?'✓':p.tries>=5?'✕':p.tries;
+    return `<span class="dial-num-badge ${cls}" title="${p.step}번째: ${p.tries>=5?'실패':p.tries+'번만에 통과'}">${label}</span>`;
+  }).join(' ');
+
+  // 완료 시간
+  const ts = dial.submittedAt ? new Date(dial.submittedAt.seconds*1000) : null;
+  const timeStr = ts
+    ? `${ts.getMonth()+1}/${ts.getDate()} ${String(ts.getHours()).padStart(2,'0')}:${String(ts.getMinutes()).padStart(2,'0')}`
+    : '-';
+
+  // 녹음 버튼
+  const recHtml = dial.fileUrl
+    ? `<button class="play-btn" onclick="playAudio('${dial.fileUrl}','${studentName} #${dialNum}')">▶ 듣기</button>
+       <button class="del-btn" onclick="deleteRec('${dial.subId}','${dial.fileUrl}','${dial.fileName||''}','${studentName}','${scriptKey}')">🗑</button>`
+    : '<span style="color:#9CA3AF;font-size:.72rem;">없음</span>';
+
+  return `
+    <tr>
+      <td><b>#${dialNum}</b></td>
+      <td>${rateHtml}</td>
+      <td>${badges || '<span style="color:#9CA3AF;font-size:.72rem;">-</span>'}</td>
+      <td style="font-size:.75rem;color:#6B7280;">${timeStr}</td>
+      <td>${recHtml}</td>
+    </tr>`;
+}
+
+// ── 오디오 ──
+function playAudio(url, name) {
   const panel = document.getElementById('audioPanel');
   document.getElementById('audioName').textContent = name;
-  document.getElementById('audioSentence').textContent = sentence || '';
-  const audio = document.getElementById('audioPlayer');
-  audio.src = url;
-  audio.play();
+  const player = document.getElementById('audioPlayer');
+  player.src = url;
+  player.play();
   panel.classList.add('show');
 }
-
-async function deleteRecord(docId, fileUrl, fileName) {
-  if (!confirm(`🗑 이 기록을 삭제할까요?\n\n파일: ${fileName}\n\n삭제하면 복구할 수 없어요.`)) return;
-
-  try {
-    // Firestore 문서 삭제
-    await window._deleteDoc(window._doc(window._db, 'submissions', docId));
-
-    // Storage 파일 삭제 (파일명으로 경로 추정)
-    if (fileUrl && fileName) {
-      try {
-        // allData에서 studentName, unitId 찾기
-        const record = allData.find(d => d.id === docId);
-        if (record) {
-          const unitFolder = record.unitName ? record.unitName.replace(/\//g,'-') : `Unit${record.unitId}`;
-          const path = `recordings/${record.studentName}/${unitFolder}/${record.fileName}`;
-          const fileRef = window._ref(window._storage, path);
-          await window._deleteObject(fileRef);
-        }
-      } catch(e) {
-        console.warn('Storage 파일 삭제 실패:', e);
-      }
-    }
-
-    // 화면에서 행 제거
-    const row = document.getElementById(`row-${docId}`);
-    if (row) {
-      row.style.transition = 'opacity .3s';
-      row.style.opacity = '0';
-      setTimeout(() => {
-        row.remove();
-        // 데이터도 메모리에서 제거
-        allData = allData.filter(d => d.id !== docId);
-        updateStats();
-        // 남은 데이터 없으면 빈 화면
-        if (!document.querySelector('.table-row')) {
-          document.getElementById('tableWrap').innerHTML =
-            '<div class="empty"><div>📭</div>제출된 녹음이 없어요.</div>';
-        }
-      }, 300);
-    }
-
-    showDeleteToast('✅ 삭제 완료!');
-  } catch(e) {
-    console.error(e);
-    showDeleteToast('❌ 삭제 실패. 다시 시도해주세요.');
-  }
-}
-
-function showDeleteToast(msg) {
-  const t = document.createElement('div');
-  t.textContent = msg;
-  t.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1F2937;color:white;padding:11px 22px;border-radius:14px;font-weight:700;font-size:.92rem;z-index:999;';
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 2500);
-}
-
-
-async function resetAll() {
-  if (!confirm('⚠️ 정말 모든 기록을 삭제할까요?\n\n제출 기록, 발음 기록이 모두 삭제됩니다.\n녹음 파일은 Firebase Storage에서 따로 삭제해주세요.\n\n되돌릴 수 없어요!')) return;
-  if (!confirm('마지막 확인! 정말 삭제할까요?')) return;
-
-  try {
-    // submissions 삭제
-    const q1 = window._query(window._collection(window._db, 'submissions'));
-    const snap1 = await window._getDocs(q1);
-    for (const d of snap1.docs) {
-      await window._deleteDoc(window._doc(window._db, 'submissions', d.id));
-    }
-    // hardWords 삭제
-    const q2 = window._query(window._collection(window._db, 'hardWords'));
-    const snap2 = await window._getDocs(q2);
-    for (const d of snap2.docs) {
-      await window._deleteDoc(window._doc(window._db, 'hardWords', d.id));
-    }
-    alert('✅ 모든 기록이 삭제됐어요!');
-    loadData();
-  } catch(e) {
-    alert('❌ 삭제 실패: ' + e.message);
-  }
-}
-
 function closeAudio() {
-  document.getElementById('audioPlayer').pause();
+  const player = document.getElementById('audioPlayer');
+  player.pause(); player.src = '';
   document.getElementById('audioPanel').classList.remove('show');
 }
+
+// ── 삭제 ──
+async function deleteRec(subId, fileUrl, fileName, studentName, unitName) {
+  if (!confirm(`🗑 이 기록을 삭제할까요?\n\n${studentName} · ${unitName}\n\n되돌릴 수 없어요.`)) return;
+  try {
+    await window._deleteDoc(window._doc(window._db,'submissions',subId));
+    if (fileName && studentName && unitName) {
+      try {
+        const path = `recordings/${studentName}/${unitName.replace(/\//g,'-')}/${fileName}`;
+        await window._deleteObject(window._ref(window._storage, path));
+      } catch(e) { console.warn(e); }
+    }
+    toast('✅ 삭제 완료!');
+    await loadAll();
+  } catch(e) {
+    toast('❌ 삭제 실패');
+  }
+}
+
+// ── 전체 초기화 ──
+async function resetAll() {
+  if (!confirm('⚠️ 정말 모든 기록을 삭제할까요?\n\n제출 기록과 발음 기록이 모두 삭제됩니다.\n되돌릴 수 없어요!')) return;
+  if (!confirm('마지막 확인! 정말 삭제할까요?')) return;
+  try {
+    const [snap1, snap2] = await Promise.all([
+      window._getDocs(window._query(window._collection(window._db,'submissions'))),
+      window._getDocs(window._query(window._collection(window._db,'hardWords')))
+    ]);
+    for (const d of snap1.docs) await window._deleteDoc(window._doc(window._db,'submissions',d.id));
+    for (const d of snap2.docs) await window._deleteDoc(window._doc(window._db,'hardWords',d.id));
+    alert('✅ 모든 기록이 삭제됐어요!');
+    loadAll();
+  } catch(e) { alert('❌ 삭제 실패: ' + e.message); }
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+document.addEventListener('firebaseReady', loadAll);
 </script>
 </body>
 </html>
