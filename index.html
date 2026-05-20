@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -189,22 +188,26 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);min-height:100vh;}
     Point Junior Speaking
   </div>
   <div class="hname" id="hName" style="display:none"></div>
+  <div class="hname" id="hClass" style="display:none;background:rgba(255,255,255,.15);margin-left:4px;"></div>
 </div>
 
 <div class="app">
 
-  <!-- 이름 -->
+  <!-- 로그인 -->
   <div class="screen active" id="scName">
-    <div class="name-wrap">
-      <div class="name-logo">
+    <div class="login-wrap">
+      <div class="login-logo">
         <img src="logo.png" alt="Point Academy" style="height:90px;width:auto;">
       </div>
-      <div class="name-title">안녕하세요! <span>이름</span>을<br>알려주세요</div>
-      <div class="name-sub">녹음 파일이 선생님께 자동으로 전달돼요 😊</div>
-      <div class="name-row">
-        <input class="name-input" id="nameInput" type="text" placeholder="예) 홍길동" maxlength="10"
-          onkeydown="if(event.key==='Enter')doName()">
-        <button class="btn-go" onclick="doName()">시작! →</button>
+      <div class="login-title">안녕하세요! <span>로그인</span>해주세요</div>
+      <div class="login-sub">이름과 비밀번호를 입력해주세요 😊</div>
+      <div class="login-form">
+        <input class="login-input" id="loginName" type="text" placeholder="이름 (예: 홍길동)" maxlength="10"
+          onkeydown="if(event.key==='Enter')document.getElementById('loginPw').focus()">
+        <input class="login-input" id="loginPw" type="password" placeholder="비밀번호 (숫자 4자리)" maxlength="4"
+          onkeydown="if(event.key==='Enter')doLogin()">
+        <div class="login-error" id="loginError">이름 또는 비밀번호가 틀렸어요 😢</div>
+        <button class="btn-login" onclick="doLogin()">로그인 →</button>
       </div>
     </div>
   </div>
@@ -311,9 +314,34 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);min-height:100vh;}
 <div class="toast" id="toast"></div>
 
 <script>
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ★★★ 학생 명단 & 비밀번호 ★★★
+// 학생 추가/수정 시 여기만 바꾸면 돼요!
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const students = [
+  // 관리자
+  { name:"포인트", pw:"2384", cls:"관리자", unitIds:[1,2,3,4] },
+  // E.S.1반
+  { name:"김태연", pw:"2847", cls:"E.S.1반", unitIds:[1,2,3,4] },
+  { name:"박주성", pw:"5193", cls:"E.S.1반", unitIds:[1,2,3,4] },
+  { name:"정진호", pw:"7362", cls:"E.S.1반", unitIds:[1,2,3,4] },
+  { name:"한바로", pw:"4815", cls:"E.S.1반", unitIds:[1,2,3,4] },
+  { name:"안서윤", pw:"9274", cls:"E.S.1반", unitIds:[1,2,3,4] },
+  { name:"강민서", pw:"6531", cls:"E.S.1반", unitIds:[1,2,3,4] },
+  // E.S.2반
+  { name:"김지안", pw:"3726", cls:"E.S.2반", unitIds:[1,2,3,4] },
+  { name:"백지선", pw:"8149", cls:"E.S.2반", unitIds:[1,2,3,4] },
+  { name:"김승아", pw:"5083", cls:"E.S.2반", unitIds:[1,2,3,4] },
+  // E.S.3반
+  { name:"정선우", pw:"7418", cls:"E.S.3반", unitIds:[1,2,3,4] },
+  // P-E.S반
+  { name:"강준서", pw:"2963", cls:"P-E.S반", unitIds:[1,2,3,4] },
+];
+
 const units = [
   {
-    id: 1, name: "4/3 Script", emoji: "📖",
+    id: 1, name: "4/3 Script", emoji: "📖", classes: ["E.S.1반","E.S.2반","E.S.3반","P-E.S반"],
     dialogues: [
       {lines: ["I'm kind of nervous about going into the haunted house.", "Don't worry. We can hold hands if you want.", "Thanks. I'm happy with that idea!"]},
       {lines: ["He is going to hold a meeting in 5 minutes. Can you wait?", "Sure. I'm decent at waiting patiently."]},
@@ -328,7 +356,7 @@ const units = [
     ]
   },
   {
-    id: 2, name: "4/17 Script", emoji: "📖",
+    id: 2, name: "4/17 Script", emoji: "📖", classes: ["E.S.1반","E.S.2반","E.S.3반","P-E.S반"],
     dialogues: [
       {lines: ["Do you know where the glue is?", "I think we ran out of glue during the last art class.", "Oh, I see. Do you want to go to the store with me?", "Sure! Let's go and buy two bottles just in case."]},
       {lines: ["Do you remember my cousin, Minho?", "Yes, why? Did you see him?", "Yeah, I ran into him at the library this morning.", "Did he study hard?", "Not really. He was just looking for some comic books."]},
@@ -348,7 +376,7 @@ const units = [
     ]
   },
   {
-    id: 3, name: "5/1 Script", emoji: "📖",
+    id: 3, name: "5/1 Script", emoji: "📖", classes: ["E.S.1반","E.S.2반","E.S.3반","P-E.S반"],
     dialogues: [
       {lines: ["I'm gonna wake up early tomorrow to catch the first train to Seoul.", "Would you like to go together? I need to buy some books at the mall anyway.", "That sounds perfect. I was wondering if you could call me at 6 AM just in case.", "Sure. Please remind me to charge my phone tonight so it doesn't die."]},
       {lines: ["I wanna sit down and rest for a while. My legs are so tired.", "Me too. Would you like to go to that new cafe across the street?", "That sounds perfect. I'd like to try their strawberry cake.", "Great! Let's go there and have a relaxing time."]},
@@ -363,7 +391,7 @@ const units = [
     ]
   },
   {
-    id: 4, name: "5/8 Script", emoji: "📖",
+    id: 4, name: "5/8 Script", emoji: "📖", classes: ["E.S.1반","E.S.2반","E.S.3반","P-E.S반"],
     dialogues: [
       {lines: ["Welcome to my house! Please come in and make yourself comfortable.", "Thank you for inviting me. Should I take off my shoes here?", "Yes, please. Would you like some warm tea? It's a bit chilly outside today.", "I'd like some green tea, if you don't mind. It smells wonderful in here!"]},
       {lines: ["Where would you like to go first for our city tour this afternoon?", "I'd like to look around the traditional market and pick up some souvenirs for my parents.", "That's a great plan. Don't forget to keep your wallet safe in the crowded area.", "Thanks for the tip. I'll make sure to hold onto my bag tightly."]},
@@ -383,6 +411,8 @@ const units = [
 
 // ── STATE ──
 let sName = '';
+let sClass = '';
+let sUnitIds = [];
 let tryCount = 0;      // 현재 문장 시도 횟수
 let hasListened = false; // 듣기 버튼 눌렀는지 여부
 let hardWords = [];    // 5번 이상 틀린 기록
@@ -419,23 +449,41 @@ function openBrowser() {
 }
 
 // ── NAME ──
-function doName() {
-  const v = document.getElementById('nameInput').value.trim();
-  if (!v) { toast('이름을 입력해주세요 😊'); return; }
-  sName = v;
-  document.getElementById('hName').textContent = v + ' ✨';
+function doLogin() {
+  const name = document.getElementById('loginName').value.trim();
+  const pw   = document.getElementById('loginPw').value.trim();
+  const err  = document.getElementById('loginError');
+
+  const found = students.find(s => s.name === name && s.pw === pw);
+  if (!found) {
+    err.classList.add('show');
+    document.getElementById('loginPw').value = '';
+    return;
+  }
+  err.classList.remove('show');
+  sName    = found.name;
+  sClass   = found.cls;
+  sUnitIds = found.unitIds;
+
+  document.getElementById('hName').textContent = name + ' ✨';
   document.getElementById('hName').style.display = 'block';
-  document.getElementById('greet').textContent = v + ' 학생, 오늘도 화이팅! 🎉';
-  showSc('scUnits'); renderUnits();
+  document.getElementById('greet').textContent = sClass === '관리자'
+    ? '관리자 모드 — 모든 Script를 확인할 수 있어요 👀'
+    : `${sClass} ${name} 학생, 오늘도 화이팅! 🎉`;
+  showSc('scUnits');
+  renderUnits();
 }
 
 // ── UNITS ──
 function renderUnits() {
-  document.getElementById('unitGrid').innerHTML = units.map(u => `
+  const isAdmin = sClass === '관리자';
+  const allowed = isAdmin ? units : units.filter(u => sUnitIds.includes(u.id));
+  document.getElementById('unitGrid').innerHTML = allowed.map(u => `
     <div class="unit-card" onclick="selectUnit(${u.id})">
       ${doneUnits[u.id] ? '<div class="unit-done">완료 ✓</div>' : ''}
       <div class="unit-name">${u.emoji} ${u.name}</div>
       <div class="unit-cnt">💬 ${u.dialogues.length}개 대화</div>
+      ${isAdmin && u.classes ? '<div style="font-size:.68rem;color:#B0A898;font-weight:700;margin-top:4px;">' + u.classes.join(' · ') + '</div>' : ''}
     </div>`).join('');
 }
 
