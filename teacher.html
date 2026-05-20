@@ -346,6 +346,7 @@ function renderStudentCard(name, data, cls) {
           <div class="student-class">${cls}</div>
         </div>
         <div class="student-status" style="${statusColor}">${statusLabel}</div>
+        <button onclick="deleteStudent('${name}')" style="background:rgba(255,255,255,.2);border:none;color:white;border-radius:8px;padding:3px 8px;font-family:'Nunito',sans-serif;font-size:.68rem;font-weight:800;cursor:pointer;margin-left:6px;">🗑</button>
       </div>
       <div class="script-list">${scriptsHtml}</div>
     </div>`;
@@ -490,6 +491,31 @@ async function resetAll() {
     alert('✅ 모든 기록이 삭제됐어요!');
     loadAll();
   } catch(e) { alert('❌ 삭제 실패: ' + e.message); }
+}
+
+// ── 학생 전체 기록 삭제 ──
+async function deleteStudent(name) {
+  if (!confirm(`🗑 "${name}" 학생의 모든 기록을 삭제할까요?\n\n제출 기록과 발음 기록이 모두 삭제됩니다.\n(Storage 파일은 Firebase에서 직접 삭제해주세요)\n\n되돌릴 수 없어요!`)) return;
+  try {
+    // submissions 삭제
+    const snap1 = await window._getDocs(window._query(window._collection(window._db,'submissions')));
+    for (const d of snap1.docs) {
+      if (d.data().studentName === name) {
+        await window._deleteDoc(window._doc(window._db,'submissions',d.id));
+      }
+    }
+    // hardWords 삭제
+    const snap2 = await window._getDocs(window._query(window._collection(window._db,'hardWords')));
+    for (const d of snap2.docs) {
+      if (d.data().studentName === name) {
+        await window._deleteDoc(window._doc(window._db,'hardWords',d.id));
+      }
+    }
+    toast(`✅ ${name} 학생 기록 삭제 완료!`);
+    await loadAll();
+  } catch(e) {
+    toast('❌ 삭제 실패: ' + e.message);
+  }
 }
 
 function toast(msg) {
