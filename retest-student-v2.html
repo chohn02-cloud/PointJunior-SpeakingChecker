@@ -157,6 +157,9 @@ let state = {
   timeLeftSec: null,
   timerHandle: null,
   gradeResult: null,
+  submitting: false,
+  drillQuestions: [],
+  drillAnswers: {},
   error: null
 };
 
@@ -167,6 +170,8 @@ function render(){
   if(state.screen === "dashboard") return renderDashboard();
   if(state.screen === "exam") return renderExam();
   if(state.screen === "graded") return renderGraded();
+  if(state.screen === "drill") return renderDrill();
+  if(state.screen === "drillComplete") return renderDrillComplete();
   if(state.screen === "reschedule") return renderReschedule();
 }
 
@@ -353,22 +358,26 @@ function openTeacherGate(assignment, onSuccess){
 
 /* ====================== 시험 시작 ====================== */
 async function startExam(assignment){
-  const examSnap = await db.collection("retestExams").doc(assignment.examId).get();
-  if(!examSnap.exists){ alert("시험 문제를 찾을 수 없어요. 선생님께 알려주세요."); return; }
-  state.activeExam = { id: examSnap.id, ...examSnap.data() };
-  state.activeAssignment = assignment;
-  state.answers = {};
-  state.timeLeftSec = (state.activeExam.timeLimitMinutes || 20) * 60;
+  try{
+    const examSnap = await withTimeout(db.collection("retestExams").doc(assignment.examId).get());
+    if(!examSnap.exists){ alert("시험 문제를 찾을 수 없어요. 선생님께 알려주세요."); return; }
+    state.activeExam = { id: examSnap.id, ...examSnap.data() };
+    state.activeAssignment = assignment;
+    state.answers = {};
+    state.timeLeftSec = (state.activeExam.timeLimitMinutes || 20) * 60;
 
-  await db.collection("retestAssignments").doc(assignment.id).update({
-    status: "in_progress",
-    startedAt: new Date().toISOString()
-  });
-  assignment.status = "in_progress";
+    await withTimeout(db.collection("retestAssignments").doc(assignment.id).update({
+      status: "in_progress",
+      startedAt: new Date().toISOString()
+    }));
+    assignment.status = "in_progress";
 
-  state.screen = "exam";
-  render();
-  startTimer();
+    state.screen = "exam";
+    render();
+    startTimer();
+  }catch(err){
+    alert("시험을 시작하지 못했어요 (" + err.message + "). 인터넷 연결 확인하고 다시 눌러줘.");
+  }
 }
 
 function startTimer(){
@@ -430,6 +439,7 @@ function renderExam(){
   });
 
   document.getElementById("btn-submit").onclick = ()=>{
+    if(state.submitting) return;
     if(confirm("제출하면 다시 수정할 수 없어. 제출할까?")) submitExam(false);
   };
 }
@@ -438,21 +448,33 @@ function renderExam(){
 function normalize(s){
   return (s||"").toString().trim().toLowerCase().replace(/\s+/g," ");
 }
+function isCorrect(q, given){
+  if(q.type === "mc") return String(given) === String(q.correctIndex);
+  const acceptable = Array.isArray(q.answer) ? q.answer : [q.answer];
+  return acceptable.some(a => normalize(a) === normalize(given));
+}
+function withTimeout(promise, ms){
+  ms = ms || 15000;
+  return Promise.race([
+    promise,
+    new Promise((_, reject)=> setTimeout(()=> reject(new Error("요청이 너무 오래 걸려요. 인터넷 연결을 확인해줘.")), ms))
+  ]);
+}
 async function submitExam(timedOut){
+  if(state.submitting) return;
+  state.submitting = true;
   clearInterval(state.timerHandle);
+
+  const btn = document.getElementById("btn-submit");
+  if(btn){ btn.disabled = true; btn.textContent = "제출 중..."; }
+
   const exam = state.activeExam;
   const wrongs = [];
   let wrongCount = 0;
 
   exam.questions.forEach(q=>{
     const given = state.answers[q.id];
-    let correct = false;
-    if(q.type === "mc"){
-      correct = String(given) === String(q.correctIndex);
-    } else {
-      const acceptable = Array.isArray(q.answer) ? q.answer : [q.answer];
-      correct = acceptable.some(a => normalize(a) === normalize(given));
-    }
+    const correct = isCorrect(q, given);
     if(!correct){
       wrongCount++;
       wrongs.push({
@@ -473,16 +495,30 @@ async function submitExam(timedOut){
     willPass: wrongCount <= PASS_CUTOFF_WRONG
   };
 
-  await db.collection("retestAssignments").doc(state.activeAssignment.id).update({
-    status: "graded_awaiting_notebook",
-    gradeResult: result
-  });
-  state.activeAssignment.status = "graded_awaiting_notebook";
-  state.activeAssignment.gradeResult = result;
-  state.gradeResult = result;
-
-  state.screen = "graded";
-  render();
+  try{
+    await withTimeout(db.collection("retestAssignments").doc(state.activeAssignment.id).update({
+      status: "graded_awaiting_notebook",
+      gradeResult: result
+    }));
+    state.activeAssignment.status = "graded_awaiting_notebook";
+    state.activeAssignment.gradeResult = result;
+    state.gradeResult = result;
+    state.submitting = false;
+    state.screen = "graded";
+    render();
+  }catch(err){
+    state.submitting = false;
+    if(btn){ btn.disabled = false; btn.textContent = "제출하기"; }
+    let box = document.getElementById("submit-err");
+    if(!box){
+      box = document.createElement("div");
+      box.id = "submit-err";
+      box.className = "err";
+      const qlistEl = document.getElementById("qlist");
+      if(qlistEl) qlistEl.insertAdjacentElement("afterend", box);
+    }
+    box.textContent = "제출에 실패했어요 (" + err.message + "). 인터넷 연결 확인하고 제출하기를 다시 눌러줘. 답은 그대로 남아있어.";
+  }
 }
 
 /* ====================== 채점 결과 + 오답노트 화면 ====================== */
@@ -503,6 +539,10 @@ function renderGraded(){
       ? `<button class="btn-primary" id="btn-teacher-final">선생님 최종 확인</button>`
       : "";
 
+  const drillBtn = r.wrongItems.length
+    ? `<button class="btn-ghost" id="btn-drill">🔁 틀린 문제만 반복해서 풀기 (다 맞을 때까지)</button>`
+    : "";
+
   app.innerHTML = `
     <h1>채점 결과</h1>
     <div class="card center">
@@ -513,14 +553,21 @@ function renderGraded(){
       <div class="rt-title" style="margin-bottom:8px;">📝 틀린 문제는 노트에 각각 10번씩 적어줘</div>
       ${wrongHtml || `<div class="empty">틀린 문제가 없어! 바로 선생님께 보여줘 🎉</div>`}
     </div>
+    ${drillBtn}
     ${nextAction}
     <button class="btn-ghost" id="btn-back">목록으로</button>
   `;
+  const drillBtnEl = document.getElementById("btn-drill");
+  if(drillBtnEl) drillBtnEl.onclick = startDrill;
   const toFinal = document.getElementById("btn-to-final");
   if(toFinal) toFinal.onclick = async ()=>{
-    await db.collection("retestAssignments").doc(a.id).update({ status:"awaiting_final_check" });
-    a.status = "awaiting_final_check";
-    render();
+    try{
+      await withTimeout(db.collection("retestAssignments").doc(a.id).update({ status:"awaiting_final_check" }));
+      a.status = "awaiting_final_check";
+      render();
+    }catch(err){
+      alert("처리에 실패했어요 (" + err.message + "). 다시 눌러줘.");
+    }
   };
   const tFinal = document.getElementById("btn-teacher-final");
   if(tFinal) tFinal.onclick = ()=> openTeacherGate(a, finalizeCheck);
@@ -528,26 +575,128 @@ function renderGraded(){
   document.getElementById("btn-back").onclick = async ()=>{ await loadAssignments(); state.screen="dashboard"; render(); };
 }
 
+/* ====================== 틀린 문제만 반복 학습(드릴) ====================== */
+async function startDrill(){
+  const a = state.activeAssignment;
+  let exam = state.activeExam;
+  if(!exam || exam.id !== a.examId){
+    try{
+      const snap = await withTimeout(db.collection("retestExams").doc(a.examId).get());
+      if(!snap.exists){ alert("시험 문제를 불러오지 못했어요."); return; }
+      exam = { id: snap.id, ...snap.data() };
+      state.activeExam = exam;
+    }catch(err){
+      alert("문제를 불러오는 데 실패했어요 (" + err.message + ")");
+      return;
+    }
+  }
+  const wrongIds = new Set(a.gradeResult.wrongItems.map(w=>w.questionId));
+  state.drillQuestions = exam.questions.filter(q=> wrongIds.has(q.id));
+  state.drillAnswers = {};
+  state.screen = "drill";
+  render();
+}
+
+function renderDrill(){
+  const qs = state.drillQuestions;
+  app.innerHTML = `
+    <h1>🔁 틀린 문제 다시 풀기</h1>
+    <div class="sub">다 맞을 때까지 계속 나와! 이번 판 남은 문제: ${qs.length}개</div>
+    <div id="drill-qlist"></div>
+    <button class="btn-primary" id="drill-submit">채점하기</button>
+    <button class="btn-ghost" id="drill-exit">그만하고 결과로 돌아가기</button>
+  `;
+  const qlist = document.getElementById("drill-qlist");
+  qlist.innerHTML = qs.map((q,i)=>{
+    if(q.type === "mc"){
+      const choices = (q.choices||[]).map((c,ci)=>`
+        <label class="choice" data-q="${q.id}" data-c="${ci}">
+          <input type="radio" name="dq_${q.id}" value="${ci}">
+          <span>${c}</span>
+        </label>
+      `).join("");
+      return `<div class="qcard"><div class="qnum">문제 ${i+1}</div><div class="qtext">${q.text}</div>${choices}</div>`;
+    }
+    return `<div class="qcard"><div class="qnum">문제 ${i+1}</div><div class="qtext">${q.text}</div>
+      <input type="text" id="dans_${q.id}" placeholder="답을 입력해줘"></div>`;
+  }).join("");
+
+  qlist.querySelectorAll(".choice").forEach(lbl=>{
+    lbl.onclick = ()=>{
+      const qid = lbl.dataset.q, cidx = lbl.dataset.c;
+      state.drillAnswers[qid] = cidx;
+      qlist.querySelectorAll(`.choice[data-q="${qid}"]`).forEach(l=>l.classList.remove("selected"));
+      lbl.classList.add("selected");
+      lbl.querySelector("input").checked = true;
+    };
+  });
+  qlist.querySelectorAll('input[type=text]').forEach(inp=>{
+    inp.oninput = ()=>{ state.drillAnswers[inp.id.replace("dans_","")] = inp.value; };
+  });
+
+  document.getElementById("drill-submit").onclick = ()=>{
+    const stillWrong = qs.filter(q => !isCorrect(q, state.drillAnswers[q.id]));
+    if(!stillWrong.length){
+      state.screen = "drillComplete";
+      render();
+    } else {
+      state.drillQuestions = stillWrong;
+      state.drillAnswers = {};
+      render();
+    }
+  };
+  document.getElementById("drill-exit").onclick = ()=>{ state.screen = "graded"; render(); };
+}
+
+/* ====================== 반복 학습 완료 - 전체 복습 후 완료 버튼 ====================== */
+function renderDrillComplete(){
+  const a = state.activeAssignment;
+  const items = a.gradeResult.wrongItems;
+  const reviewHtml = items.map((w,i)=>`
+    <div class="wrong-item" style="border-left-color:var(--ok);">
+      <div class="q">${i+1}. ${w.text}</div>
+      <div class="a">정답: ${w.correctAnswer}</div>
+    </div>
+  `).join("");
+  app.innerHTML = `
+    <h1>🎉 다 맞았어!</h1>
+    <div class="sub">완료 누르기 전에 틀렸던 문제 전부 한 번 더 보고 갈게</div>
+    <div class="card">
+      <div class="rt-title" style="margin-bottom:8px;">✅ 정답 다시 확인</div>
+      ${reviewHtml}
+    </div>
+    <button class="btn-primary" id="btn-drill-done">완료</button>
+  `;
+  document.getElementById("btn-drill-done").onclick = ()=>{
+    state.screen = "graded";
+    render();
+  };
+}
+
 /* ====================== 최종 선생님 확인 → 통과/재재시험 ====================== */
 async function finalizeCheck(assignment){
   const r = assignment.gradeResult;
-  if(r.willPass){
-    await db.collection("retestAssignments").doc(assignment.id).update({
-      status: "passed",
-      passedAt: new Date().toISOString()
-    });
-    assignment.status = "passed";
-    alert("재시험 통과했어요! 축하해요 🎉");
-  } else {
-    await db.collection("retestAssignments").doc(assignment.id).update({
-      status: "needs_reschedule"
-    });
-    assignment.status = "needs_reschedule";
-    alert(`아쉽지만 ${PASS_CUTOFF_WRONG}개 이내로 틀려야 통과예요. 재재시험 일정을 잡아볼까요?`);
+  try{
+    if(r.willPass){
+      await withTimeout(db.collection("retestAssignments").doc(assignment.id).update({
+        status: "passed",
+        passedAt: new Date().toISOString()
+      }));
+      assignment.status = "passed";
+      alert("재시험 통과했어요! 축하해요 🎉");
+    } else {
+      await withTimeout(db.collection("retestAssignments").doc(assignment.id).update({
+        status: "needs_reschedule"
+      }));
+      assignment.status = "needs_reschedule";
+      alert(`아쉽지만 ${PASS_CUTOFF_WRONG}개 이내로 틀려야 통과예요. 재재시험 일정을 잡아볼까요?`);
+    }
+    await loadAssignments();
+    state.screen = "dashboard";
+    render();
+  }catch(err){
+    alert("처리에 실패했어요 (" + err.message + "). 다시 시도해줘.");
   }
-  await loadAssignments();
-  state.screen = "dashboard";
-  render();
 }
 
 /* ====================== 재재시험 일정 요청 ====================== */
