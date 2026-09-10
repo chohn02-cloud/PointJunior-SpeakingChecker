@@ -93,11 +93,11 @@ const ADMIN_PW = "2384";
 const POINTVOCA_RANGES = window.POINTVOCA_DATA;
 // 반별 기본 규칙 (선생님 설정 화면에서 덮어쓸 수 있음) - 전체 영어쓰기로 통일
 const POINTVOCA_DEFAULT_RULES = {
-  "CL3": { direction: "enWrite", multiMeaning: "one" },
-  "SL2": { direction: "enWrite", multiMeaning: "one" },
-  "SL3": { direction: "enWrite", multiMeaning: "one" }
+  "CL3": { direction: "enWrite", multiMeaning: "one", firstCount: 25 },
+  "SL2": { direction: "enWrite", multiMeaning: "one", firstCount: 25 },
+  "SL3": { direction: "enWrite", multiMeaning: "one", firstCount: 25 }
 };
-const POINTVOCA_UNIVERSAL_DEFAULT = { direction: "enWrite", multiMeaning: "one" };
+const POINTVOCA_UNIVERSAL_DEFAULT = { direction: "enWrite", multiMeaning: "one", firstCount: 25 };
 const CATEGORIES = window.CATEGORIES_DATA;
 
 /* ====================== 상태 ====================== */
@@ -123,7 +123,38 @@ let state = {
 
 const app = document.getElementById("app");
 
+/* ====================== 새로고침/뒤로가기로 날아감 방지 ====================== */
+const PROGRESS_KEY = "pj_vocab_progress_v1";
+// 선생님 화면은 저장/복원 대상에서 제외 (관리자 세션이 새로고침만으로 계속 유지되면 안 되니까)
+const NON_PERSIST_SCREENS = new Set(["teacherLogin","teacherDashboard","teacherPointVoca","teacherPvSchedule","teacherDailyTest","teacherAddStudent"]);
+function saveProgressToStorage(){
+  try{
+    if(!NON_PERSIST_SCREENS.has(state.screen)){
+      localStorage.setItem(PROGRESS_KEY, JSON.stringify(state));
+    }
+  }catch(e){ /* 저장 실패해도 진행에는 지장 없게 무시 */ }
+}
+function clearProgressStorage(){
+  try{ localStorage.removeItem(PROGRESS_KEY); }catch(e){}
+}
+function loadProgressFromStorage(){
+  try{
+    const raw = localStorage.getItem(PROGRESS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+window.addEventListener("beforeunload", function(e){
+  if(state.screen === "test" || state.screen === "pvTest"){
+    e.preventDefault();
+    e.returnValue = "";
+  }
+});
+
 function render(){
+  renderInner();
+  saveProgressToStorage();
+}
+function renderInner(){
   if(state.screen === "categories") return renderCategories();
   if(state.screen === "books") return renderBooks();
   if(state.screen === "pvRanges") return renderPvRanges();
@@ -133,10 +164,13 @@ function render(){
   if(state.screen === "teacherDashboard") return renderTeacherDashboard();
   if(state.screen === "teacherPointVoca") return renderTeacherPointVoca();
   if(state.screen === "teacherPvSchedule") return renderTeacherPvSchedule();
+  if(state.screen === "teacherDailyTest") return renderTeacherDailyTest();
+  if(state.screen === "teacherAddStudent") return renderTeacherAddStudent();
   if(state.screen === "days") return renderDays();
   if(state.screen === "login") return renderLogin();
   if(state.screen === "test") return renderTest();
   if(state.screen === "roundResult") return renderRoundResult();
+  if(state.screen === "studyReview") return renderStudyReview();
   if(state.screen === "passed") return renderPassed();
   if(state.screen === "history") return renderHistory();
 }
@@ -144,10 +178,48 @@ function render(){
 function normalize(s){
   return (s||"").toString().trim().toLowerCase().replace(/\s+/g," ");
 }
+// 영어 정답에 괄호가 있으면: 삭제형(괄호 통째로 빼고), 삽입형(괄호 내용 그대로 넣고),
+// 그리고 괄호가 딱 하나뿐이고 그 내용이 전치사/관사 같은 기능어가 아니면(=완전히 다른 철자) 그 내용 자체도 별도 정답으로 인정
+function expandParenVariants(str){
+  if(!/\(/.test(str)) return [str];
+  const FUNC_WORDS = new Set(["to","of","from","in","with","on","at","for","about","into","as","out","up","away","that","the","a","an","off","down","over"]);
+  const groups = [];
+  let template = "";
+  let lastIndex = 0;
+  let idx = 0;
+  const re = /\(([^)]*)\)/g;
+  let m;
+  while((m = re.exec(str))){
+    template += str.slice(lastIndex, m.index) + `{{${idx}}}`;
+    const content = m[1].replace(/~/g,"").trim();
+    groups.push(content);
+    lastIndex = re.lastIndex;
+    idx++;
+  }
+  template += str.slice(lastIndex);
+  let variants = [template];
+  groups.forEach((content, i)=>{
+    const next = [];
+    variants.forEach(v=>{
+      next.push(v.replace(`{{${i}}}`, "").replace(/\s+/g," ").trim());
+      if(content) next.push(v.replace(`{{${i}}}`, content).replace(/\s+/g," ").trim());
+    });
+    variants = next;
+  });
+  variants = [...new Set(variants.map(v=>v.trim()).filter(Boolean))];
+  if(groups.length === 1){
+    const content = groups[0];
+    if(content && !FUNC_WORDS.has(content.toLowerCase())){
+      variants.push(content);
+    }
+  }
+  return variants;
+}
 function isCorrectAnswer(given, engField){
   const options = String(engField).split("/").map(s=>s.trim()).filter(Boolean);
+  const allVariants = options.flatMap(expandParenVariants);
   const g = normalize(given);
-  return options.some(o => normalize(o) === g);
+  return allVariants.some(o => normalize(o) === g);
 }
 function isPolysemyCorrect(given, meaningsArr){
   const tokens = (given||"").split(/[\/,;、，]|\n/).map(normalize).filter(Boolean);
@@ -188,10 +260,29 @@ function renderCategories(){
     </div>`;
   }).join("");
   list.querySelectorAll(".folder-card").forEach(card=>{
-    card.onclick = ()=>{
+    card.onclick = async ()=>{
       const id = card.dataset.id;
       if(id === "pointvoca"){
         state.screen = "pvRanges";
+        render();
+        return;
+      }
+      if(id === "dailytest"){
+        card.style.opacity = "0.6";
+        try{
+          await loadDailyTestsIntoCategories();
+        }catch(err){
+          alert("Daily Test 목록을 불러오지 못했어요 (" + err.message + ")");
+          card.style.opacity = "1";
+          return;
+        }
+        card.style.opacity = "1";
+        if(!Object.keys(CATEGORIES.dailytest.books).length){
+          alert("아직 등록된 Daily Test가 없어요. 선생님이 등록하면 여기 나타나요!");
+          return;
+        }
+        state.categoryId = id;
+        state.screen = "books";
         render();
         return;
       }
@@ -207,6 +298,20 @@ function renderCategories(){
   });
   const histBtn = document.getElementById("btn-history");
   if(histBtn) histBtn.onclick = ()=>{ state.screen = "history"; render(); };
+}
+
+/* ====================== Daily Test: Firestore에서 불러와 CATEGORIES에 주입 ====================== */
+async function loadDailyTestsIntoCategories(){
+  const snap = await withTimeout(db.collection("dailyTests").orderBy("createdAt","desc").get());
+  const books = {};
+  snap.docs.forEach(doc=>{
+    const d = doc.data();
+    books[doc.id] = {
+      label: d.label,
+      days: { "1": (d.words||[]).map(w=>({ type:"word", kor:w.kor, eng:w.eng })) }
+    };
+  });
+  CATEGORIES.dailytest.books = books;
 }
 
 /* ====================== 화면2: 단어장(책) 선택 ====================== */
@@ -386,6 +491,7 @@ function renderLogin(){
     ? (POINTVOCA_RANGES.find(r=>r.id===state.pvRangeId)||{}).label || "point voca"
     : CATEGORIES[state.categoryId].books[state.bookId].label;
   const backTarget = isPv ? "pvRanges" : "books";
+  const classOptions = [...new Set(STUDENTS.map(s=>s.class))].filter(c=>c!=="테스트").sort();
   app.innerHTML = `
     <div class="logo-row"><div class="logo-dot"><img src="logo.png" alt="Point Junior"></div><div class="brand"><b>Point Junior</b> 단어시험</div></div>
     <h1>이름을 입력해줘</h1>
@@ -393,36 +499,64 @@ function renderLogin(){
     <div class="card">
       <label>이름</label>
       <input type="text" id="in-name" placeholder="이름">
+      <div id="new-student-box" style="display:none;">
+        <div class="sub" style="margin:8px 0 0;">처음 보는 이름이네! 반을 입력하고 등록하면 바로 시작할 수 있어</div>
+        <label>반</label>
+        <input type="text" id="in-class" list="in-class-list" placeholder="예: CL1">
+        <datalist id="in-class-list">${classOptions.map(c=>`<option value="${c}">`).join("")}</datalist>
+      </div>
       <div id="login-err" class="err" style="display:none;"></div>
       <button class="btn-primary" id="btn-login">시작하기</button>
     </div>
     <button class="btn-ghost" id="btn-back-days">← 목록으로</button>
   `;
-  document.getElementById("btn-login").onclick = ()=>{
-    const n = document.getElementById("in-name").value.trim();
+  let pendingNewName = null;
+
+  document.getElementById("btn-login").onclick = async ()=>{
     const err = document.getElementById("login-err");
+    err.style.display = "none";
+
+    if(pendingNewName){
+      // 신규 학생 등록 단계
+      const cls = document.getElementById("in-class").value.trim();
+      if(!cls){ err.style.display="block"; err.textContent="반을 입력해줘"; return; }
+      try{
+        await withTimeout(db.collection("students").add({ name: pendingNewName, class: cls, addedAt: new Date().toISOString() }));
+        STUDENTS.push({ name: pendingNewName, class: cls });
+      }catch(e){
+        console.error("신규 학생 등록 실패:", e.message);
+        // 등록 저장이 실패해도 이번 세션에서는 시험 볼 수 있게 진행
+      }
+      state.studentName = pendingNewName;
+      state.studentClass = cls;
+      if(isPv) startPointVocaTest(); else { state.screen = "days"; render(); }
+      return;
+    }
+
+    const n = document.getElementById("in-name").value.trim();
     if(!n){ err.style.display="block"; err.textContent="이름을 입력해줘"; return; }
 
-    let studentClass = null;
     if(n === "테스트"){
-      studentClass = "테스트";
-    } else {
-      const match = STUDENTS.find(s => s.name === n);
-      if(!match){
-        err.style.display="block";
-        err.textContent="명단에 없는 이름이야. 선생님께 확인해줘";
-        return;
-      }
-      studentClass = match.class;
+      state.studentName = n;
+      state.studentClass = "테스트";
+      if(isPv) startPointVocaTest(); else { state.screen = "days"; render(); }
+      return;
     }
-    state.studentName = n;
-    state.studentClass = studentClass;
-    if(isPv){
-      startPointVocaTest();
-    } else {
-      state.screen = "days";
-      render();
+
+    const match = STUDENTS.find(s => s.name === n);
+    if(match){
+      state.studentName = n;
+      state.studentClass = match.class;
+      if(isPv) startPointVocaTest(); else { state.screen = "days"; render(); }
+      return;
     }
+
+    // 명단에 없는 이름 -> 반 입력받아서 바로 등록
+    pendingNewName = n;
+    document.getElementById("in-name").disabled = true;
+    document.getElementById("new-student-box").style.display = "block";
+    document.getElementById("btn-login").textContent = "등록하고 시작하기";
+    document.getElementById("in-class").focus();
   };
   document.getElementById("btn-back-days").onclick = ()=>{ state.screen = backTarget; render(); };
 }
@@ -442,7 +576,11 @@ async function getPvRulesForClass(cls){
     const snap = await withTimeout(db.collection("pointVocaSettings").doc(cls).get());
     if(snap.exists){
       const d = snap.data();
-      if(d.direction) return { direction: d.direction, multiMeaning: d.multiMeaning || "one" };
+      if(d.direction) return {
+        direction: d.direction,
+        multiMeaning: d.multiMeaning || "one",
+        firstCount: d.firstCount ? +d.firstCount : 25
+      };
     }
   }catch(err){
     console.error("point voca 설정 조회 실패:", err.message);
@@ -461,6 +599,7 @@ async function startPointVocaTest(){
   }
   state.pvDirection = rules.direction; // "krWrite" | "enWrite"
   state.pvMultiMeaning = rules.multiMeaning; // "all" | "one"
+  state.pvFirstCount = rules.firstCount || 25;
 
   let isRetest = false;
   try{
@@ -474,11 +613,12 @@ async function startPointVocaTest(){
   state.pvIsRetest = isRetest;
 
   let words = shuffleArray(range.words);
-  if(!isRetest) words = words.slice(0, 25);
+  if(!isRetest) words = words.slice(0, Math.min(state.pvFirstCount, words.length));
 
   state.currentQuestions = words.map((w,i)=>({ qid:"pv"+i, word:w.word, senses:w.senses }));
   state.answers = {};
   state.screen = "pvTest";
+  saveProgressToStorage();
   render();
 }
 
@@ -541,7 +681,7 @@ function renderPvTest(){
   const multiHint = state.pvDirection === "krWrite" ? " (뜻이 여러 개면 아는 만큼 써줘, / 로 구분 — 하나만 맞아도 정답)" : "";
   app.innerHTML = `
     <div class="logo-row"><div class="logo-dot"><img src="logo.png" alt="Point Junior"></div><div class="brand"><b>point voca</b> ${range.label}</div></div>
-    <div class="round-badge">${state.pvIsRetest ? "🔁 재시험 · 50문제" : "✅ 첫 시험 · 25문제"}</div>
+    <div class="round-badge">${state.pvIsRetest ? `🔁 재시험 · ${qs.length}문제` : `✅ 첫 시험 · ${qs.length}문제`}</div>
     <h1>써줘 ✍️</h1>
     <div class="sub">${state.studentName} 학생 · ${dirLabel}${multiHint}</div>
     <div id="qlist"></div>
@@ -557,7 +697,7 @@ function renderPvTest(){
     </div>
   `).join("");
   qlist.querySelectorAll("input[type=text]").forEach(inp=>{
-    inp.oninput = ()=>{ state.answers[inp.id.replace("ans_","")] = inp.value; };
+    inp.oninput = ()=>{ state.answers[inp.id.replace("ans_","")] = inp.value; saveProgressToStorage(); };
   });
   document.getElementById("btn-pv-submit").onclick = ()=>{
     if(state.submitting) return;
@@ -565,6 +705,7 @@ function renderPvTest(){
   };
   document.getElementById("btn-pv-back-test").onclick = ()=>{
     if(!confirm("시험을 그만두고 범위 목록으로 돌아갈까?")) return;
+    clearProgressStorage();
     state.screen = "pvRanges";
     render();
   };
@@ -609,6 +750,7 @@ async function submitPvTest(){
   }
 
   state.screen = "pvResult";
+  clearProgressStorage();
   render();
 }
 
@@ -647,7 +789,10 @@ function prepareTest(){
   state.firstScore = null;
   state.totalQuestions = words.length;
   state.currentQuestions = words.map((w,i)=> buildQuestion(w, i));
+  state.originalQuestions = state.currentQuestions.slice();
   state.answers = {};
+  state.drillMode = false;
+  saveProgressToStorage();
 }
 function buildQuestion(w, i){
   if(w.type === "polysemy"){
@@ -669,7 +814,7 @@ function renderTest(){
       : "뜻을 보고 알맞은 영단어를 입력해줘";
   app.innerHTML = `
     <div class="logo-row"><div class="logo-dot"><img src="logo.png" alt="Point Junior"></div><div class="brand"><b>${book.label}</b> · Day ${state.day}</div></div>
-    ${state.round > 1 ? `<div class="round-badge">🔁 ${state.round}번째 시도 · 틀린 문제만</div>` : `<div class="round-badge">1차 시험 · ${qs.length}문제</div>`}
+    ${state.drillMode ? `<div class="round-badge">🔁 틀린 문제만 다시 확인 중 (점수는 이미 확정됨)</div>` : state.round > 1 ? `<div class="round-badge">🔁 ${state.round}번째 시도 · 전체 ${qs.length}문제</div>` : `<div class="round-badge">1차 시험 · ${qs.length}문제</div>`}
     <h1>써줘 ✍️</h1>
     <div class="sub">${state.studentName} 학생 · ${instruction}</div>
     <div id="qlist"></div>
@@ -692,7 +837,7 @@ function renderTest(){
     </div>`;
   }).join("");
   qlist.querySelectorAll("input[type=text]").forEach(inp=>{
-    inp.oninput = ()=>{ state.answers[inp.id.replace("ans_","")] = inp.value; };
+    inp.oninput = ()=>{ state.answers[inp.id.replace("ans_","")] = inp.value; saveProgressToStorage(); };
   });
   document.getElementById("btn-submit").onclick = ()=>{
     if(state.submitting) return;
@@ -704,6 +849,7 @@ function renderTest(){
     } else {
       if(!confirm("시험을 그만두고 목록으로 돌아갈까?")) return;
     }
+    clearProgressStorage();
     state.screen = "days";
     render();
   };
@@ -738,32 +884,77 @@ async function submitRound(){
   if(state.round === 1){
     state.firstScore = correctCount;
   }
-
   state.submitting = false;
 
   if(!wrongs.length){
-    // 통과!
-    await savePassRecord();
+    // 다 맞음 -> 바로 통과
+    await savePassRecord(); // 항상 state.firstScore로 기록됨
+    clearProgressStorage();
     state.screen = "passed";
     render();
-  } else {
-    state.lastRoundWrongs = wrongs;
-    state.lastRoundCorrect = correctCount;
-    state.lastRoundTotal = qs.length;
-    state.screen = "roundResult";
-    render();
+    return;
   }
+
+  state.lastRoundWrongs = wrongs;
+  state.lastRoundCorrect = correctCount;
+  state.lastRoundTotal = qs.length;
+
+  if(state.drillMode){
+    // 이미 틀린 것만 반복하는 중 -> 계속 그 상태 유지
+    state.lastRoundForceFull = false;
+    state.lastRoundJustLocked = false;
+    state.lastRoundJustEnteredDrill = false;
+  } else if(wrongs.length <= 2){
+    // 커트라인(-2) 이내지만 완벽하진 않음 -> 틀린 것만 한 번 더 보여주고 통과 (전체 재시험은 아님)
+    state.drillMode = true;
+    state.lastRoundForceFull = false;
+    state.lastRoundJustLocked = false;
+    state.lastRoundJustEnteredDrill = true;
+  } else if(state.round >= 3){
+    // 3번째 시도까지도 3개 이상 오답 -> 처음 점수로 확정, 이후로는 틀린 것만 연습 모드로 전환
+    state.drillMode = true;
+    state.lastRoundForceFull = false;
+    state.lastRoundJustLocked = true;
+    state.lastRoundJustEnteredDrill = false;
+  } else {
+    // 3개 이상 오답, 아직 전체 재시험 기회 있음 -> 공부하고 처음부터 다시
+    state.lastRoundForceFull = true;
+    state.lastRoundJustLocked = false;
+    state.lastRoundJustEnteredDrill = false;
+  }
+
+  state.screen = "roundResult";
+  render();
 }
 
 function renderRoundResult(){
   const wrongs = state.lastRoundWrongs;
   const book = CATEGORIES[state.categoryId].books[state.bookId];
+  const forceFull = state.lastRoundForceFull;
+  const justLocked = state.lastRoundJustLocked;
+  const justEnteredDrill = state.lastRoundJustEnteredDrill;
+
+  let statusMsg, buttonLabel;
+  if(forceFull){
+    statusMsg = `${wrongs.length}개 틀렸어. 3개 이상 틀리면 공부하고 처음부터 다시 봐야 해! (${state.round}/3번째 시도)`;
+    buttonLabel = "📖 다시 공부하고 시험보기";
+  } else if(justLocked){
+    statusMsg = `3번 도전했지만 아직 ${wrongs.length}개가 남았어. 점수는 처음 시험 점수(${state.firstScore}/${state.totalQuestions})로 확정됐고, 이제부터는 틀린 문제만 완전히 맞힐 때까지 연습할게!`;
+    buttonLabel = "🔁 틀린 문제만 연습하기";
+  } else if(justEnteredDrill){
+    statusMsg = `${wrongs.length}개 틀렸지만 통과 기준(최대 2개)엔 들었어! 그래도 확실히 익히게 틀린 것만 한 번 더 볼게 (점수는 이미 확정됨)`;
+    buttonLabel = "🔁 틀린 문제만 다시 풀기";
+  } else {
+    statusMsg = `아직 ${wrongs.length}개 남았어. 다 맞을 때까지 틀린 것만 다시 풀어보자 (점수는 이미 확정됨)`;
+    buttonLabel = "🔁 틀린 문제만 다시 풀기";
+  }
+
   app.innerHTML = `
     <div class="logo-row"><div class="logo-dot"><img src="logo.png" alt="Point Junior"></div><div class="brand"><b>${book.label}</b> · Day ${state.day}</div></div>
     <h1>${state.round}번째 결과</h1>
     <div class="card center">
       <div class="score-big">${state.lastRoundCorrect} / ${state.lastRoundTotal}</div>
-      <div class="score-sub">틀린 ${wrongs.length}개는 다시 풀어야 해</div>
+      <div class="score-sub">${statusMsg}</div>
     </div>
     <div class="card">
       <div style="font-weight:700;margin-bottom:8px;">❌ 틀린 문제</div>
@@ -782,9 +973,16 @@ function renderRoundResult(){
         </div>`;
       }).join("")}
     </div>
-    <button class="btn-primary" id="btn-retry">🔁 틀린 문제만 다시 풀기</button>
+    <button class="btn-primary" id="btn-retry">${buttonLabel}</button>
   `;
   document.getElementById("btn-retry").onclick = ()=>{
+    if(forceFull){
+      state.screen = "studyReview";
+      saveProgressToStorage();
+      render();
+      return;
+    }
+    // 드릴 모드(막 들어왔거나 계속 중) -> 틀린 것만 다시
     state.currentQuestions = wrongs.map(w=> w.mode === "polysemy"
       ? { qid: w.qid, mode:"polysemy", word:w.word, hint:w.hint, meanings:w.meanings }
       : { qid: w.qid, mode:"word", kor: w.kor, eng: w.eng }
@@ -792,6 +990,35 @@ function renderRoundResult(){
     state.answers = {};
     state.round += 1;
     state.screen = "test";
+    saveProgressToStorage();
+    render();
+  };
+}
+
+/* ====================== 3개 이상 틀렸을 때 다시 공부하는 화면 ====================== */
+function renderStudyReview(){
+  const book = CATEGORIES[state.categoryId].books[state.bookId];
+  const words = state.originalQuestions;
+  app.innerHTML = `
+    <div class="logo-row"><div class="logo-dot"><img src="logo.png" alt="Point Junior"></div><div class="brand"><b>${book.label}</b> · Day ${state.day}</div></div>
+    <h1>📖 다시 한 번 외워보자</h1>
+    <div class="sub">전체 ${words.length}개를 다시 훑어보고, 준비되면 처음부터 다시 시험볼게</div>
+    <div class="card">
+      ${words.map((w,i)=>{
+        if(w.mode === "polysemy"){
+          return `<div class="wrong-item"><div class="q">${i+1}. ${w.word} <span style="color:var(--muted);font-size:12px;">(${w.hint})</span></div><div class="a">${w.meanings.join(" / ")}</div></div>`;
+        }
+        return `<div class="wrong-item"><div class="q">${i+1}. ${w.kor}</div><div class="a">${w.eng}</div></div>`;
+      }).join("")}
+    </div>
+    <button class="btn-primary" id="btn-study-done">이제 다시 시험볼게 ✍️</button>
+  `;
+  document.getElementById("btn-study-done").onclick = ()=>{
+    state.currentQuestions = shuffleArray(state.originalQuestions);
+    state.answers = {};
+    state.round += 1;
+    state.screen = "test";
+    saveProgressToStorage();
     render();
   };
 }
@@ -870,7 +1097,34 @@ async function renderHistory(){
 }
 
 /* ====================== 시작 ====================== */
-render();
+(async function initApp(){
+  try{
+    const snap = await withTimeout(db.collection("students").get());
+    snap.docs.forEach(doc=>{
+      const d = doc.data();
+      if(d.name && !STUDENTS.some(s=>s.name===d.name)){
+        STUDENTS.push({ name: d.name, class: d.class });
+      }
+    });
+  }catch(err){
+    console.error("신규 학생 목록 불러오기 실패:", err.message);
+  }
+
+  const saved = loadProgressFromStorage();
+  if(saved && saved.screen && saved.screen !== "categories"){
+    if(saved.screen === "test" || saved.screen === "pvTest"){
+      if(confirm("이어서 풀던 시험이 있어! 이어서 풀까? (취소하면 처음부터 새로 시작해)")){
+        Object.assign(state, saved);
+      } else {
+        clearProgressStorage();
+      }
+    } else {
+      // 시험 화면이 아니면(결과 화면, 목록 화면 등) 그냥 조용히 이어서 보여줌
+      Object.assign(state, saved);
+    }
+  }
+  render();
+})();
 
 /* ====================== 선생님 로그인 ====================== */
 function renderTeacherLogin(){
@@ -912,12 +1166,16 @@ async function renderTeacherDashboard(){
     <div id="dash-list"></div>
     <button class="btn-ghost" id="btn-pointvoca-settings">⚙️ point voca 반별 설정</button>
     <button class="btn-ghost" id="btn-pointvoca-schedule">📅 point voca 진도(범위) 관리</button>
+    <button class="btn-ghost" id="btn-dailytest-manage">📝 Daily Test 등록</button>
+    <button class="btn-ghost" id="btn-add-student">👤 신규 학생 등록</button>
     <button class="btn-ghost" id="btn-back-dash">← 학생 화면으로</button>
   `;
   document.getElementById("btn-admin-logout").onclick = ()=>{ state.screen = "categories"; render(); };
   document.getElementById("btn-back-dash").onclick = ()=>{ state.screen = "categories"; render(); };
   document.getElementById("btn-pointvoca-settings").onclick = ()=>{ state.screen = "teacherPointVoca"; render(); };
   document.getElementById("btn-pointvoca-schedule").onclick = ()=>{ state.screen = "teacherPvSchedule"; render(); };
+  document.getElementById("btn-dailytest-manage").onclick = ()=>{ state.screen = "teacherDailyTest"; render(); };
+  document.getElementById("btn-add-student").onclick = ()=>{ state.screen = "teacherAddStudent"; render(); };
 
   let allRecords = [];
   function renderList(filterText){
@@ -985,6 +1243,8 @@ async function renderTeacherPointVoca(){
           <option value="one" ${cur.multiMeaning!=="all"?"selected":""}>하나만 맞아도 정답</option>
           <option value="all" ${cur.multiMeaning==="all"?"selected":""}>다른 의미는 전부 다 써야 정답</option>
         </select>
+        <label>첫 시험 문제 수 (재시험은 전체)</label>
+        <input type="text" class="pv-firstcount" value="${cur.firstCount ?? 25}" placeholder="예: 25" inputmode="numeric">
         <button class="btn-primary pv-save" style="margin-top:10px;">이 반 저장</button>
         <div class="pv-msg"></div>
       </div>
@@ -997,10 +1257,12 @@ async function renderTeacherPointVoca(){
       const cls = card.dataset.class;
       const direction = card.querySelector(".pv-direction").value;
       const multiMeaning = card.querySelector(".pv-multi").value;
+      const firstCountRaw = card.querySelector(".pv-firstcount").value.trim();
+      const firstCount = Math.max(1, parseInt(firstCountRaw, 10) || 25);
       const msg = card.querySelector(".pv-msg");
       try{
         await withTimeout(db.collection("pointVocaSettings").doc(cls).set({
-          class: cls, direction, multiMeaning, updatedAt: new Date().toISOString()
+          class: cls, direction, multiMeaning, firstCount, updatedAt: new Date().toISOString()
         }));
         msg.innerHTML = `<div class="ok-msg">✅ 저장됐어요</div>`;
       }catch(err){
@@ -1087,6 +1349,168 @@ async function renderTeacherPvSchedule(){
       msg.innerHTML = `<div class="err">저장 실패: ${err.message}</div>`;
     }
   };
+}
+
+/* ====================== Daily Test 등록 (선생님) ====================== */
+async function renderTeacherDailyTest(){
+  const todayLabel = new Date().toLocaleDateString('ko-KR', { month:'long', day:'numeric', weekday:'short' });
+  app.innerHTML = `
+    <div class="logo-row"><div class="logo-dot"><img src="logo.png" alt="Point Junior"></div><div class="brand"><b>Point Junior</b> 단어시험 관리</div></div>
+    <h1>📝 Daily Test 등록</h1>
+    <div class="sub">한 줄에 "한글,영어" 형식으로 하나씩 입력해줘 (예: 사과,apple). 등록하면 학생 화면 Daily Test 폴더에 바로 나타나요.</div>
+    <div class="card">
+      <label>제목 (기본은 오늘 날짜)</label>
+      <input type="text" id="dt-label" value="${todayLabel}" placeholder="예: 8월 18일 Daily Test">
+      <label>단어 목록</label>
+      <textarea id="dt-words" rows="10" placeholder="사과,apple&#10;바나나,banana&#10;..." style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px;color:inherit;font-family:inherit;font-size:14.5px;margin-top:6px;"></textarea>
+      <button class="btn-primary" id="dt-save" style="margin-top:10px;">등록하기</button>
+      <div id="dt-save-msg"></div>
+    </div>
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:10px;">등록된 Daily Test 목록</div>
+      <div id="dt-list" class="sub">불러오는 중...</div>
+    </div>
+    <button class="btn-ghost" id="btn-back-dt">← 관리 화면으로</button>
+  `;
+  document.getElementById("btn-back-dt").onclick = ()=>{ state.screen = "teacherDashboard"; render(); };
+
+  document.getElementById("dt-save").onclick = async ()=>{
+    const label = document.getElementById("dt-label").value.trim();
+    const raw = document.getElementById("dt-words").value;
+    const msg = document.getElementById("dt-save-msg");
+    if(!label){ msg.innerHTML = `<div class="err">제목을 입력해줘</div>`; return; }
+    const words = raw.split("\n").map(line=>{
+      const parts = line.split(",");
+      if(parts.length < 2) return null;
+      const kor = parts[0].trim();
+      const eng = parts.slice(1).join(",").trim();
+      if(!kor || !eng) return null;
+      return { kor, eng };
+    }).filter(Boolean);
+    if(!words.length){ msg.innerHTML = `<div class="err">"한글,영어" 형식으로 한 줄에 하나씩 입력해줘</div>`; return; }
+    try{
+      await withTimeout(db.collection("dailyTests").add({
+        label, words, createdAt: new Date().toISOString()
+      }));
+      msg.innerHTML = `<div class="ok-msg">✅ ${words.length}개 단어로 등록했어요</div>`;
+      document.getElementById("dt-words").value = "";
+      loadDailyTestList();
+    }catch(err){
+      msg.innerHTML = `<div class="err">등록 실패: ${err.message}</div>`;
+    }
+  };
+
+  async function loadDailyTestList(){
+    const listEl = document.getElementById("dt-list");
+    try{
+      const snap = await withTimeout(db.collection("dailyTests").orderBy("createdAt","desc").get());
+      if(!snap.docs.length){
+        listEl.innerHTML = `<div class="empty">아직 등록한 Daily Test가 없어요</div>`;
+        return;
+      }
+      listEl.innerHTML = snap.docs.map(doc=>{
+        const d = doc.data();
+        return `<div class="history-item" data-id="${doc.id}">
+          <div class="t">${d.label} <span style="color:var(--muted);font-size:12px;">(${(d.words||[]).length}단어)</span></div>
+          <button class="link-btn dt-del" data-id="${doc.id}">삭제</button>
+        </div>`;
+      }).join("");
+      listEl.querySelectorAll(".dt-del").forEach(btn=>{
+        btn.onclick = async ()=>{
+          if(!confirm("이 Daily Test를 삭제할까? 학생 화면에서도 사라져요.")) return;
+          try{
+            await withTimeout(db.collection("dailyTests").doc(btn.dataset.id).delete());
+            loadDailyTestList();
+          }catch(err){
+            alert("삭제 실패: " + err.message);
+          }
+        };
+      });
+    }catch(err){
+      listEl.innerHTML = `<div class="err">목록을 불러오지 못했어요 (${err.message})</div>`;
+    }
+  }
+  loadDailyTestList();
+}
+
+/* ====================== 신규 학생 등록 (선생님) ====================== */
+async function renderTeacherAddStudent(){
+  const classes = [...new Set(STUDENTS.map(s=>s.class))].filter(c=>c!=="테스트").sort();
+  app.innerHTML = `
+    <div class="logo-row"><div class="logo-dot"><img src="logo.png" alt="Point Junior"></div><div class="brand"><b>Point Junior</b> 단어시험 관리</div></div>
+    <h1>👤 신규 학생 등록</h1>
+    <div class="sub">비밀번호 없이 이름만으로 로그인하니까, 이름이랑 반만 등록하면 바로 시험 볼 수 있어요.</div>
+    <div class="card">
+      <label>이름</label>
+      <input type="text" id="as-name" placeholder="예: 김하늘">
+      <label>반</label>
+      <input type="text" id="as-class" list="as-class-list" placeholder="예: CL1">
+      <datalist id="as-class-list">${classes.map(c=>`<option value="${c}">`).join("")}</datalist>
+      <div id="as-msg"></div>
+      <button class="btn-primary" id="as-save" style="margin-top:10px;">등록하기</button>
+    </div>
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:10px;">새로 등록한 학생 (기존 명단 제외)</div>
+      <div id="as-list" class="sub">불러오는 중...</div>
+    </div>
+    <button class="btn-ghost" id="btn-back-as">← 관리 화면으로</button>
+  `;
+  document.getElementById("btn-back-as").onclick = ()=>{ state.screen = "teacherDashboard"; render(); };
+
+  document.getElementById("as-save").onclick = async ()=>{
+    const name = document.getElementById("as-name").value.trim();
+    const cls = document.getElementById("as-class").value.trim();
+    const msg = document.getElementById("as-msg");
+    if(!name || !cls){ msg.innerHTML = `<div class="err">이름이랑 반을 다 입력해줘</div>`; return; }
+    if(STUDENTS.some(s=>s.name===name)){
+      msg.innerHTML = `<div class="err">이미 있는 이름이야. 동명이인이면 이름을 다르게 등록해줘 (예: 김하늘2)</div>`;
+      return;
+    }
+    try{
+      await withTimeout(db.collection("students").add({ name, class: cls, addedAt: new Date().toISOString() }));
+      STUDENTS.push({ name, class: cls });
+      msg.innerHTML = `<div class="ok-msg">✅ "${name}" (${cls}) 등록 완료! 바로 로그인 가능해요</div>`;
+      document.getElementById("as-name").value = "";
+      document.getElementById("as-class").value = "";
+      loadAddedStudents();
+    }catch(err){
+      msg.innerHTML = `<div class="err">등록 실패: ${err.message}</div>`;
+    }
+  };
+
+  async function loadAddedStudents(){
+    const listEl = document.getElementById("as-list");
+    try{
+      const snap = await withTimeout(db.collection("students").orderBy("addedAt","desc").get());
+      if(!snap.docs.length){
+        listEl.innerHTML = `<div class="empty">아직 새로 등록한 학생이 없어요</div>`;
+        return;
+      }
+      listEl.innerHTML = snap.docs.map(doc=>{
+        const d = doc.data();
+        return `<div class="history-item" data-id="${doc.id}">
+          <div class="t">${d.name} <span style="color:var(--muted);font-size:12px;">(${d.class})</span></div>
+          <button class="link-btn as-del" data-id="${doc.id}" data-name="${d.name}">삭제</button>
+        </div>`;
+      }).join("");
+      listEl.querySelectorAll(".as-del").forEach(btn=>{
+        btn.onclick = async ()=>{
+          if(!confirm("이 학생을 삭제할까?")) return;
+          try{
+            await withTimeout(db.collection("students").doc(btn.dataset.id).delete());
+            const idx = STUDENTS.findIndex(s=>s.name===btn.dataset.name);
+            if(idx > -1) STUDENTS.splice(idx, 1);
+            loadAddedStudents();
+          }catch(err){
+            alert("삭제 실패: " + err.message);
+          }
+        };
+      });
+    }catch(err){
+      listEl.innerHTML = `<div class="err">목록을 불러오지 못했어요 (${err.message})</div>`;
+    }
+  }
+  loadAddedStudents();
 }
 </script>
 </body>
