@@ -110,6 +110,7 @@ let state = {
   studentClass: null,
   round: 1,
   firstScore: null,
+  bestScore: null,
   totalQuestions: null,
   currentQuestions: [],
   answers: {},
@@ -787,6 +788,7 @@ function prepareTest(){
   const words = book.days[state.day];
   state.round = 1;
   state.firstScore = null;
+  state.bestScore = null;
   state.totalQuestions = words.length;
   state.currentQuestions = words.map((w,i)=> buildQuestion(w, i));
   state.originalQuestions = state.currentQuestions.slice();
@@ -884,11 +886,15 @@ async function submitRound(){
   if(state.round === 1){
     state.firstScore = correctCount;
   }
+  // 틀린 것만 다시 보는 드릴 라운드가 아니라, 전체(원래 문제 수)를 다 푼 라운드일 때만 최고점수 갱신
+  if(qs.length === state.totalQuestions){
+    state.bestScore = (state.bestScore === null) ? correctCount : Math.max(state.bestScore, correctCount);
+  }
   state.submitting = false;
 
   if(!wrongs.length){
     // 다 맞음 -> 바로 통과
-    await savePassRecord(); // 항상 state.firstScore로 기록됨
+    await savePassRecord(); // 여러 번 시도한 전체 시험 중 가장 높은 점수(state.bestScore)로 기록됨
     clearProgressStorage();
     state.screen = "passed";
     render();
@@ -939,7 +945,7 @@ function renderRoundResult(){
     statusMsg = `${wrongs.length}개 틀렸어. 3개 이상 틀리면 공부하고 처음부터 다시 봐야 해! (${state.round}/3번째 시도)`;
     buttonLabel = "📖 다시 공부하고 시험보기";
   } else if(justLocked){
-    statusMsg = `3번 도전했지만 아직 ${wrongs.length}개가 남았어. 점수는 처음 시험 점수(${state.firstScore}/${state.totalQuestions})로 확정됐고, 이제부터는 틀린 문제만 완전히 맞힐 때까지 연습할게!`;
+    statusMsg = `3번 도전했지만 아직 ${wrongs.length}개가 남았어. 점수는 3번 중 가장 높았던 점수(${state.bestScore}/${state.totalQuestions})로 확정됐고, 이제부터는 틀린 문제만 완전히 맞힐 때까지 연습할게!`;
     buttonLabel = "🔁 틀린 문제만 연습하기";
   } else if(justEnteredDrill){
     statusMsg = `${wrongs.length}개 틀렸지만 통과 기준(최대 2개)엔 들었어! 그래도 확실히 익히게 틀린 것만 한 번 더 볼게 (점수는 이미 확정됨)`;
@@ -1034,7 +1040,7 @@ async function savePassRecord(){
       wordbookId: state.bookId,
       wordbookLabel: book.label,
       day: state.day,
-      firstScore: state.firstScore,
+      firstScore: state.bestScore, // 필드명은 예전 그대로지만, 값은 여러 번 시도 중 최고 점수예요
       totalQuestions: state.totalQuestions,
       rounds: state.round,
       passedAt: new Date().toISOString()
@@ -1048,13 +1054,13 @@ async function savePassRecord(){
 
 function renderPassed(){
   const book = CATEGORIES[state.categoryId].books[state.bookId];
-  const pct = Math.round((state.firstScore/state.totalQuestions)*100);
+  const pct = Math.round((state.bestScore/state.totalQuestions)*100);
   app.innerHTML = `
     <div class="logo-row"><div class="logo-dot"><img src="logo.png" alt="Point Junior"></div><div class="brand"><b>${book.label}</b> · Day ${state.day}</div></div>
     <h1>🎉 통과했어!</h1>
     <div class="card center">
-      <div class="score-big">${state.firstScore} / ${state.totalQuestions}</div>
-      <div class="score-sub">1차 시험 점수 (${pct}점)</div>
+      <div class="score-big">${state.bestScore} / ${state.totalQuestions}</div>
+      <div class="score-sub">최고 점수 (${pct}점)</div>
       <div class="progress-bar"><div class="fill" style="width:${pct}%;"></div></div>
       <div class="score-sub">${state.round}번 만에 다 맞혔어!</div>
     </div>
@@ -1088,7 +1094,7 @@ async function renderHistory(){
     document.getElementById("hist-list").innerHTML = records.map(r=>`
       <div class="history-item">
         <div class="t">${r.wordbookLabel} · Day ${r.day}</div>
-        <div class="m">1차 점수: ${r.firstScore}/${r.totalQuestions} · ${r.rounds}번 만에 통과 · ${new Date(r.passedAt).toLocaleDateString('ko-KR')}</div>
+        <div class="m">최고 점수: ${r.firstScore}/${r.totalQuestions} · ${r.rounds}번 만에 통과 · ${new Date(r.passedAt).toLocaleDateString('ko-KR')}</div>
       </div>
     `).join("");
   }catch(err){
@@ -1190,7 +1196,7 @@ async function renderTeacherDashboard(){
     list.innerHTML = filtered.map(r=>`
       <div class="history-item">
         <div class="t">${r.studentName}${r.studentClass ? ` (${r.studentClass})` : ""} · ${r.wordbookLabel} · Day ${r.day}</div>
-        <div class="m">1차 점수: ${r.firstScore}/${r.totalQuestions} · ${r.rounds}번 만에 통과 · ${new Date(r.passedAt).toLocaleString('ko-KR')}</div>
+        <div class="m">최고 점수: ${r.firstScore}/${r.totalQuestions} · ${r.rounds}번 만에 통과 · ${new Date(r.passedAt).toLocaleString('ko-KR')}</div>
       </div>
     `).join("");
   }
